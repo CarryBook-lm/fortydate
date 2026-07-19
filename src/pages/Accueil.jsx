@@ -774,6 +774,72 @@ function Visites({ moi, onVoir, onFaireAbo }) {
   )
 }
 
+/* ---------------- Abonnement Sérénité (paiement CamPay) ---------------- */
+function Abonnement({ moi, onFini }) {
+  const [tel, setTel] = useState(moi?.telephone || '')
+  const [etat, setEtat] = useState('form') // form | attente | ok | echec
+  const [msg, setMsg] = useState('')
+  const MONTANT = 5000
+
+  async function payer() {
+    const num = tel.replace(/\s+/g, '')
+    if (!/^(\+?237)?6\d{8}$/.test(num)) { setMsg('Numéro MTN/Orange invalide (ex : 6XXXXXXXX).'); return }
+    setEtat('attente')
+    setMsg('Une demande de paiement va arriver sur ton téléphone. Compose ton code PIN Mobile Money pour valider.')
+    try {
+      const r = await fetch('/api/campay-collect', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ montant: MONTANT, telephone: num, user_id: moi.id })
+      })
+      const d = await r.json()
+      if (!r.ok || !d.reference) { setEtat('echec'); setMsg(d.error || 'Paiement refusé. Réessaie.'); return }
+      const ref = d.reference
+      let n = 0
+      const timer = setInterval(async () => {
+        n++
+        try {
+          const s = await fetch('/api/campay-status?reference=' + ref)
+          const sd = await s.json()
+          if (sd.status === 'SUCCESSFUL') { clearInterval(timer); setEtat('ok'); setMsg('Abonnement Sérénité activé ✅'); onFini && onFini() }
+          else if (sd.status === 'FAILED') { clearInterval(timer); setEtat('echec'); setMsg('Le paiement a échoué ou a été annulé.') }
+        } catch (_) {}
+        if (n > 30) { clearInterval(timer); setEtat(e => e === 'ok' ? e : 'echec'); if (etat !== 'ok') setMsg("Délai dépassé. Si tu as bien payé, ton abonnement s'activera sous peu.") }
+      }, 4000)
+    } catch (e) { setEtat('echec'); setMsg('Connexion au paiement impossible (teste sur le site en ligne, pas en local).') }
+  }
+
+  return (
+    <div className="fdh-abo">
+      <div className="fdh-abo-carte">
+        <div className="fdh-abo-badge">Sérénité</div>
+        <div className="fdh-abo-prix">5 000 FCFA <small>/ mois</small></div>
+        <ul className="fdh-abo-liste">
+          <li>👀 Voir qui a visité ton profil</li>
+          <li>💌 Voir qui t'a aimée</li>
+          <li>✨ Voir tes % d'affinité</li>
+          <li>💬 Messages illimités + badge vérifié</li>
+        </ul>
+      </div>
+
+      {etat === 'ok' ? (
+        <div className="fdh-abo-ok">🎉 {msg}</div>
+      ) : (
+        <>
+          <label className="fdh-l">Ton numéro Mobile Money (MTN / Orange)</label>
+          <input className="fdh-in" value={tel} placeholder="6XXXXXXXX"
+            onChange={e => setTel(e.target.value)} disabled={etat === 'attente'} />
+          {msg && <div className={'fdh-abo-msg' + (etat === 'echec' ? ' err' : '')}>{msg}</div>}
+          <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }}
+            onClick={payer} disabled={etat === 'attente'}>
+            {etat === 'attente' ? 'En attente de ta validation…' : 'Payer 5 000 FCFA'}
+          </button>
+          <p className="fdh-abo-note">Paiement sécurisé par CamPay (Mobile Money).</p>
+        </>
+      )}
+    </div>
+  )
+}
+
 /* ============================================================ */
 export default function Accueil({ onDeconnexion }) {
   const [onglet, setOnglet] = useState('proximite')
@@ -795,6 +861,13 @@ export default function Accueil({ onDeconnexion }) {
   }
   const ouvrirDiscussion = (p) => { setConversationAvec(p); setOnglet('messages') }
 
+  async function rechargerProfil() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+    setMoi(data)
+  }
+
   useEffect(() => {
     ;(async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -807,7 +880,7 @@ export default function Accueil({ onDeconnexion }) {
   }, [])
 
   const titres = { proximite: 'À proximité', rencontres: 'Rencontres', jaime: "J'aime", messages: 'Messages', match: 'Affinités', visites: 'Visites' }
-  const titreOverlay = { profil: 'Mon profil', questionnaire: 'Affinités' }
+  const titreOverlay = { profil: 'Mon profil', questionnaire: 'Affinités', abonnement: 'Sérénité' }
   const allerOnglet = (id) => { setOverlay(null); setMenuOuvert(false); setOnglet(id) }
   const ouvrirOverlay = (v) => { setOverlay(v); setMenuOuvert(false) }
 
@@ -830,6 +903,7 @@ export default function Accueil({ onDeconnexion }) {
             </div>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('profil')}>👤 Mon profil</button>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('questionnaire')}>📝 Questionnaire d'affinités</button>
+            <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Passer à Sérénité</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
           </div>
         </div>
@@ -839,12 +913,13 @@ export default function Accueil({ onDeconnexion }) {
         {overlay === 'profil' && <MonProfil moi={moi} onDeconnexion={onDeconnexion} onMaj={setMoi} />}
         {overlay === 'questionnaire' && <Questionnaire moi={moi} reponsesInit={mesReponses}
           onFini={(r) => { setMesReponses(r); setOverlay(null); setOnglet('match') }} />}
+        {overlay === 'abonnement' && <Abonnement moi={moi} onFini={rechargerProfil} />}
         {!overlay && onglet === 'proximite' && <Proximite moi={moi} onVoir={voirProfil} />}
         {!overlay && onglet === 'rencontres' && <Rencontres moi={moi} />}
         {!overlay && onglet === 'jaime' && <Jaime moi={moi} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} />}
         {!overlay && onglet === 'messages' && <Messages moi={moi} ouvrir={conversationAvec} setOuvrir={setConversationAvec} />}
         {!overlay && onglet === 'match' && <MatchAffinites moi={moi} mesReponses={mesReponses} onFaireQuestionnaire={() => ouvrirOverlay('questionnaire')} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} />}
-        {!overlay && onglet === 'visites' && <Visites moi={moi} onVoir={voirProfil} onFaireAbo={() => ouvrirOverlay('profil')} />}
+        {!overlay && onglet === 'visites' && <Visites moi={moi} onVoir={voirProfil} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
       </main>
 
       <nav className="fdh-nav">
@@ -1068,6 +1143,19 @@ function Style() {
       .fdh-fiche-bloc h4{font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:#D62A5E;margin:0 0 .5rem}
       .fdh-chips{display:flex;flex-wrap:wrap;gap:.45rem}
       .fdh-chips span{background:#F3E7EA;color:#4A1546;padding:.4rem .8rem;border-radius:99px;font-size:.85rem;font-weight:600}
+
+      /* Abonnement */
+      .fdh-abo{max-width:420px;margin:0 auto}
+      .fdh-abo-carte{background:linear-gradient(160deg,#4A1546,#7A1E52);color:#fff;border-radius:18px;padding:1.6rem;margin-bottom:1.4rem;text-align:center}
+      .fdh-abo-badge{display:inline-block;background:#C69A4E;color:#3A0F38;font-weight:800;font-size:.8rem;padding:.25rem .9rem;border-radius:99px;letter-spacing:.05em;text-transform:uppercase}
+      .fdh-abo-prix{font-size:2rem;font-weight:800;margin:.6rem 0 1rem}
+      .fdh-abo-prix small{font-size:.9rem;font-weight:600;opacity:.8}
+      .fdh-abo-liste{list-style:none;text-align:left;display:flex;flex-direction:column;gap:.6rem;padding:0;margin:0}
+      .fdh-abo-liste li{font-size:.95rem;opacity:.95}
+      .fdh-abo-msg{background:#F3E7EA;color:#5c4f57;padding:.7rem .9rem;border-radius:10px;font-size:.88rem;margin-top:.8rem;line-height:1.4}
+      .fdh-abo-msg.err{background:#fdeaea;color:#b21f4e}
+      .fdh-abo-ok{text-align:center;background:#e9f9ee;color:#1c8a3e;padding:1.4rem;border-radius:14px;font-weight:700}
+      .fdh-abo-note{text-align:center;font-size:.78rem;color:#9a8b92;margin-top:.7rem}
 
       /* Nav */
       .fdh-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;background:#fff;border-top:1px solid #EEE0E4;display:flex;z-index:20}
