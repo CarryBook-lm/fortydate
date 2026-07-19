@@ -1,7 +1,7 @@
 // api/_campay.js — utilitaires CamPay partagés (le préfixe _ = pas une route)
 const BASE = process.env.CAMPAY_BASE || 'https://www.campay.net'
 
-// Récupère le statut réel d'une transaction directement chez CamPay
+// Statut réel d'une transaction chez CamPay
 export async function campayStatus(reference) {
   const r = await fetch(`${BASE}/api/transaction/${reference}/`, {
     headers: { Authorization: 'Token ' + process.env.CAMPAY_TOKEN }
@@ -9,9 +9,11 @@ export async function campayStatus(reference) {
   return r.json()
 }
 
-// Active l'abonnement dans Supabase (via la fonction activer_abonnement, clé service_role).
+// Active l'abonnement dans Supabase. external_reference = "user_id:jours"
 // Idempotent : la contrainte unique (source, reference) empêche toute double activation.
 export async function activerAbonnement(t) {
+  const [userId, joursStr] = String(t.external_reference || '').split(':')
+  const jours = parseInt(joursStr, 10) || 30
   const url = process.env.SUPABASE_URL + '/rest/v1/rpc/activer_abonnement'
   await fetch(url, {
     method: 'POST',
@@ -21,12 +23,12 @@ export async function activerAbonnement(t) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      p_user_id: t.external_reference,
+      p_user_id: userId,
       p_source: 'campay',
       p_montant: Number(t.amount) || 0,
       p_devise: t.currency || 'XAF',
       p_reference: t.reference,
-      p_mois: 1
+      p_jours: jours
     })
   })
 }

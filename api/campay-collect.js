@@ -4,8 +4,9 @@ const BASE = process.env.CAMPAY_BASE || 'https://www.campay.net'
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Méthode non autorisée' })
   try {
-    const { montant, telephone, user_id, description } = req.body || {}
+    const { montant, jours, telephone, user_id, description } = req.body || {}
     if (!montant || !telephone || !user_id) return res.status(400).json({ error: 'Champs manquants' })
+    const dureeJours = parseInt(jours, 10) || 30
 
     // Normalise le numéro : doit commencer par 237
     let tel = String(telephone).replace(/\s+/g, '')
@@ -20,7 +21,7 @@ export default async function handler(req, res) {
         currency: 'XAF',
         from: tel,
         description: description || 'Abonnement Serenite FortyDate',
-        external_reference: user_id   // <-- permet de retrouver l'utilisateur au moment d'activer
+        external_reference: `${user_id}:${dureeJours}`   // <-- user + durée
       })
     })
     const data = await r.json()

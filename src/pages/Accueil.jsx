@@ -774,22 +774,41 @@ function Visites({ moi, onVoir, onFaireAbo }) {
   )
 }
 
-/* ---------------- Abonnement Sérénité (paiement CamPay) ---------------- */
-function Abonnement({ moi, onFini }) {
+/* ---------------- Abonnement Sérénité (modal, 3 formules) ---------------- */
+const MSG_ATTENTE = [
+  '📲 Une demande de paiement vient d\'être envoyée sur votre téléphone.',
+  '🔐 Composez votre code PIN Mobile Money pour valider.',
+  '⏳ Ne quittez pas cet écran, le paiement est en cours…',
+  '🔎 Vérification de la transaction en cours…',
+  '💜 Encore quelques instants, on y est presque…',
+]
+const PLANS = [
+  { id: 'bienvenue', nom: 'Bienvenue', prix: 1000, jours: 30, note: '1ᵉʳ mois découverte' },
+  { id: 'hebdo', nom: 'Hebdo', prix: 1500, jours: 7, note: '1 semaine' },
+  { id: 'mensuel', nom: 'Mensuel', prix: 5000, jours: 30, note: 'le plus complet' },
+]
+
+function Abonnement({ moi, onFini, onClose }) {
   const [tel, setTel] = useState(moi?.telephone || '')
+  const [plan, setPlan] = useState(PLANS[0])
   const [etat, setEtat] = useState('form') // form | attente | ok | echec
   const [msg, setMsg] = useState('')
-  const MONTANT = 100 // TEST — remettre 5000 après vérification
+  const [idx, setIdx] = useState(0)
+
+  useEffect(() => {
+    if (etat !== 'attente') return
+    const t = setInterval(() => setIdx(i => (i + 1) % MSG_ATTENTE.length), 3500)
+    return () => clearInterval(t)
+  }, [etat])
 
   async function payer() {
     const num = tel.replace(/\s+/g, '')
     if (!/^(\+?237)?6\d{8}$/.test(num)) { setMsg('Numéro MTN/Orange invalide (ex : 6XXXXXXXX).'); return }
-    setEtat('attente')
-    setMsg('Une demande de paiement va arriver sur ton téléphone. Compose ton code PIN Mobile Money pour valider.')
+    setEtat('attente'); setIdx(0); setMsg('')
     try {
       const r = await fetch('/api/campay-collect', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ montant: MONTANT, telephone: num, user_id: moi.id })
+        body: JSON.stringify({ montant: plan.prix, jours: plan.jours, telephone: num, user_id: moi.id })
       })
       const d = await r.json()
       if (!r.ok || !d.reference) { setEtat('echec'); setMsg(d.error || 'Paiement refusé. Réessaie.'); return }
@@ -800,42 +819,58 @@ function Abonnement({ moi, onFini }) {
         try {
           const s = await fetch('/api/campay-status?reference=' + ref)
           const sd = await s.json()
-          if (sd.status === 'SUCCESSFUL') { clearInterval(timer); setEtat('ok'); setMsg('Abonnement Sérénité activé ✅'); onFini && onFini() }
+          if (sd.status === 'SUCCESSFUL') { clearInterval(timer); setEtat('ok'); onFini && onFini() }
           else if (sd.status === 'FAILED') { clearInterval(timer); setEtat('echec'); setMsg('Le paiement a échoué ou a été annulé.') }
         } catch (_) {}
-        if (n > 30) { clearInterval(timer); setEtat(e => e === 'ok' ? e : 'echec'); if (etat !== 'ok') setMsg("Délai dépassé. Si tu as bien payé, ton abonnement s'activera sous peu.") }
+        if (n > 30) { clearInterval(timer); setEtat(e => e === 'ok' ? e : 'echec'); setMsg("Délai dépassé. Si tu as bien payé, ton abonnement s'activera sous peu.") }
       }, 4000)
-    } catch (e) { setEtat('echec'); setMsg('Connexion au paiement impossible (teste sur le site en ligne, pas en local).') }
+    } catch (e) { setEtat('echec'); setMsg('Connexion au paiement impossible (teste sur le site en ligne).') }
   }
 
   return (
-    <div className="fdh-abo">
-      <div className="fdh-abo-carte">
-        <div className="fdh-abo-badge">Sérénité</div>
-        <div className="fdh-abo-prix">5 000 FCFA <small>/ mois</small></div>
-        <ul className="fdh-abo-liste">
-          <li>👀 Voir qui a visité ton profil</li>
-          <li>💌 Voir qui t'a aimée</li>
-          <li>✨ Voir tes % d'affinité</li>
-          <li>💬 Messages illimités + badge vérifié</li>
-        </ul>
-      </div>
+    <div className="fdh-modal-fond" onClick={etat === 'attente' ? undefined : onClose}>
+      <div className="fdh-modal" onClick={e => e.stopPropagation()}>
+        {etat !== 'attente' && <button className="fdh-modal-x" onClick={onClose} aria-label="Fermer">✕</button>}
 
-      {etat === 'ok' ? (
-        <div className="fdh-abo-ok">🎉 {msg}</div>
-      ) : (
-        <>
-          <label className="fdh-l">Ton numéro Mobile Money (MTN / Orange)</label>
-          <input className="fdh-in" value={tel} placeholder="6XXXXXXXX"
-            onChange={e => setTel(e.target.value)} disabled={etat === 'attente'} />
-          {msg && <div className={'fdh-abo-msg' + (etat === 'echec' ? ' err' : '')}>{msg}</div>}
-          <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }}
-            onClick={payer} disabled={etat === 'attente'}>
-            {etat === 'attente' ? 'En attente de ta validation…' : `Payer ${MONTANT} FCFA`}
-          </button>
-          <p className="fdh-abo-note">Paiement sécurisé par CamPay (Mobile Money).</p>
-        </>
-      )}
+        {etat === 'ok' ? (
+          <div className="fdh-modal-fin">
+            <div className="fdh-modal-emoji">🎉</div>
+            <h2>Bienvenue chez Sérénité !</h2>
+            <p>Ton abonnement est activé. Tu as accès à toutes les fonctionnalités premium.</p>
+            <button className="fdh-btn-rose" style={{ width: '100%' }} onClick={onClose}>Continuer</button>
+          </div>
+        ) : etat === 'attente' ? (
+          <div className="fdh-modal-attente">
+            <div className="fdh-spinner" />
+            <h3>Paiement en cours…</h3>
+            <p className="fdh-attente-msg">{MSG_ATTENTE[idx]}</p>
+            <p className="fdh-attente-note">Merci de patienter, ne fermez pas cette fenêtre.</p>
+          </div>
+        ) : (
+          <>
+            <div className="fdh-modal-badge">Sérénité</div>
+            <p className="fdh-modal-sous">Débloque : qui t'a vue, qui t'a aimée, tes % d'affinité et les messages illimités.</p>
+            <div className="fdh-plans">
+              {PLANS.map(p => (
+                <button key={p.id} type="button"
+                  className={'fdh-plan' + (plan.id === p.id ? ' on' : '')}
+                  onClick={() => setPlan(p)}>
+                  <div className="fdh-plan-nom">{p.nom}</div>
+                  <div className="fdh-plan-prix">{p.prix.toLocaleString('fr-FR')} F</div>
+                  <div className="fdh-plan-note">{p.note}</div>
+                </button>
+              ))}
+            </div>
+            <label className="fdh-l">Ton numéro Mobile Money (MTN / Orange)</label>
+            <input className="fdh-in" value={tel} placeholder="6XXXXXXXX" onChange={e => setTel(e.target.value)} />
+            {msg && <div className="fdh-abo-msg err">{msg}</div>}
+            <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }} onClick={payer}>
+              Payer {plan.prix.toLocaleString('fr-FR')} FCFA
+            </button>
+            <p className="fdh-abo-note">Paiement sécurisé par CamPay (Mobile Money).</p>
+          </>
+        )}
+      </div>
     </div>
   )
 }
@@ -913,7 +948,7 @@ export default function Accueil({ onDeconnexion }) {
         {overlay === 'profil' && <MonProfil moi={moi} onDeconnexion={onDeconnexion} onMaj={setMoi} />}
         {overlay === 'questionnaire' && <Questionnaire moi={moi} reponsesInit={mesReponses}
           onFini={(r) => { setMesReponses(r); setOverlay(null); setOnglet('match') }} />}
-        {overlay === 'abonnement' && <Abonnement moi={moi} onFini={rechargerProfil} />}
+        {overlay === 'abonnement' && <Abonnement moi={moi} onFini={rechargerProfil} onClose={() => setOverlay(null)} />}
         {!overlay && onglet === 'proximite' && <Proximite moi={moi} onVoir={voirProfil} />}
         {!overlay && onglet === 'rencontres' && <Rencontres moi={moi} />}
         {!overlay && onglet === 'jaime' && <Jaime moi={moi} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} />}
@@ -1144,18 +1179,31 @@ function Style() {
       .fdh-chips{display:flex;flex-wrap:wrap;gap:.45rem}
       .fdh-chips span{background:#F3E7EA;color:#4A1546;padding:.4rem .8rem;border-radius:99px;font-size:.85rem;font-weight:600}
 
-      /* Abonnement */
-      .fdh-abo{max-width:420px;margin:0 auto}
-      .fdh-abo-carte{background:linear-gradient(160deg,#4A1546,#7A1E52);color:#fff;border-radius:18px;padding:1.6rem;margin-bottom:1.4rem;text-align:center}
-      .fdh-abo-badge{display:inline-block;background:#C69A4E;color:#3A0F38;font-weight:800;font-size:.8rem;padding:.25rem .9rem;border-radius:99px;letter-spacing:.05em;text-transform:uppercase}
-      .fdh-abo-prix{font-size:2rem;font-weight:800;margin:.6rem 0 1rem}
-      .fdh-abo-prix small{font-size:.9rem;font-weight:600;opacity:.8}
-      .fdh-abo-liste{list-style:none;text-align:left;display:flex;flex-direction:column;gap:.6rem;padding:0;margin:0}
-      .fdh-abo-liste li{font-size:.95rem;opacity:.95}
+      /* Abonnement (modal) */
+      .fdh-modal-fond{position:fixed;inset:0;background:rgba(36,10,42,.75);display:grid;place-items:center;z-index:80;padding:1.2rem}
+      .fdh-modal{background:#fff;border-radius:22px;padding:1.6rem 1.4rem;max-width:420px;width:100%;position:relative;max-height:92vh;overflow-y:auto}
+      .fdh-modal-x{position:absolute;top:.7rem;right:.9rem;background:none;border:0;font-size:1.2rem;color:#9a8b92;cursor:pointer}
+      .fdh-modal-badge{display:inline-block;background:#C69A4E;color:#3A0F38;font-weight:800;font-size:.78rem;padding:.25rem .9rem;border-radius:99px;text-transform:uppercase;letter-spacing:.05em}
+      .fdh-modal-sous{color:#7A6B74;font-size:.9rem;margin:.6rem 0 1rem;line-height:1.4}
+      .fdh-plans{display:flex;gap:.5rem;margin-bottom:1rem}
+      .fdh-plan{flex:1;border:2px solid #E4D3D8;background:#fff;border-radius:14px;padding:.8rem .4rem;cursor:pointer;text-align:center;transition:.15s}
+      .fdh-plan.on{border-color:#D62A5E;background:#fdeef3}
+      .fdh-plan-nom{font-weight:800;font-size:.85rem;color:#4A1546}
+      .fdh-plan-prix{font-weight:800;font-size:1.1rem;color:#D62A5E;margin:.2rem 0}
+      .fdh-plan-note{font-size:.68rem;color:#9a8b92;line-height:1.2}
       .fdh-abo-msg{background:#F3E7EA;color:#5c4f57;padding:.7rem .9rem;border-radius:10px;font-size:.88rem;margin-top:.8rem;line-height:1.4}
       .fdh-abo-msg.err{background:#fdeaea;color:#b21f4e}
-      .fdh-abo-ok{text-align:center;background:#e9f9ee;color:#1c8a3e;padding:1.4rem;border-radius:14px;font-weight:700}
       .fdh-abo-note{text-align:center;font-size:.78rem;color:#9a8b92;margin-top:.7rem}
+      .fdh-modal-fin{text-align:center}
+      .fdh-modal-emoji{font-size:3rem}
+      .fdh-modal-fin h2{color:#D62A5E;font-size:1.5rem;margin:.3rem 0}
+      .fdh-modal-fin p{color:#5c4f57;margin-bottom:1.4rem}
+      .fdh-modal-attente{text-align:center;padding:1.5rem .5rem}
+      .fdh-modal-attente h3{color:#4A1546;margin:1rem 0 .6rem}
+      .fdh-attente-msg{color:#3A0F38;font-size:1rem;min-height:2.6em;line-height:1.35}
+      .fdh-attente-note{color:#9a8b92;font-size:.82rem;margin-top:.6rem}
+      .fdh-spinner{width:52px;height:52px;border-radius:50%;margin:0 auto;border:5px solid #F3E7EA;border-top-color:#D62A5E;animation:fdspin 1s linear infinite}
+      @keyframes fdspin{to{transform:rotate(360deg)}}
 
       /* Nav */
       .fdh-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;background:#fff;border-top:1px solid #EEE0E4;display:flex;z-index:20}
