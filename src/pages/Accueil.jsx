@@ -779,7 +779,7 @@ function Abonnement({ moi, onFini }) {
   const [tel, setTel] = useState(moi?.telephone || '')
   const [etat, setEtat] = useState('form') // form | attente | ok | echec
   const [msg, setMsg] = useState('')
-  const MONTANT = 5000
+  const MONTANT = 100 // TEST — remettre 5000 après vérification
 
   async function payer() {
     const num = tel.replace(/\s+/g, '')
@@ -831,7 +831,7 @@ function Abonnement({ moi, onFini }) {
           {msg && <div className={'fdh-abo-msg' + (etat === 'echec' ? ' err' : '')}>{msg}</div>}
           <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }}
             onClick={payer} disabled={etat === 'attente'}>
-            {etat === 'attente' ? 'En attente de ta validation…' : 'Payer 5 000 FCFA'}
+            {etat === 'attente' ? 'En attente de ta validation…' : `Payer ${MONTANT} FCFA`}
           </button>
           <p className="fdh-abo-note">Paiement sécurisé par CamPay (Mobile Money).</p>
         </>
