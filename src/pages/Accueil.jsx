@@ -322,7 +322,7 @@ function Rencontres({ moi }) {
 }
 
 /* ---------------- Onglet : J'aime ---------------- */
-function Jaime({ moi, onOuvrirMessages }) {
+function Jaime({ moi, onVoir, onDiscuter }) {
   const [matchs, setMatchs] = useState(null)
   const [recus, setRecus] = useState(null)
   const [err, setErr] = useState('')
@@ -350,26 +350,32 @@ function Jaime({ moi, onOuvrirMessages }) {
     <div className="fdh-jaime">
       {matchs.length > 0 && (
         <section><h3 className="fdh-section-titre">Tes matchs <span>{matchs.length}</span></h3>
-          <div className="fdh-jgrid">{matchs.map(p => (
-            <button key={p.id} className="fdh-jcarte" onClick={() => onOuvrirMessages(p)}>
-              <div className="fdh-carte-photo"><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></div>
-              <div className="fdh-jnom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}</div>
-              <div className="fdh-jbadge">💬 Discuter</div>
-            </button>))}</div></section>)}
+          <div className="fdh-grid2">{matchs.map(p => (
+            <div key={p.id} className="fdh-carte fdh-carte-b">
+              <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></button>
+              <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}</div>
+              <div className="fdh-2btn">
+                <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
+                <button className="b-disc" onClick={() => onDiscuter(p)}>Discuter</button>
+              </div>
+            </div>))}</div></section>)}
       {recus.length > 0 && (
         <section style={{ marginTop: '1.6rem' }}><h3 className="fdh-section-titre">Ils t'ont aimée <span>{recus.length}</span></h3>
-          <div className="fdh-jgrid">{recus.map(p => (
-            <div key={p.id} className="fdh-jcarte">
-              <div className="fdh-carte-photo"><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></div>
-              <div className="fdh-jnom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}</div>
-              <div className="fdh-jbadge rose">❤ T'a aimée</div>
+          <div className="fdh-grid2">{recus.map(p => (
+            <div key={p.id} className="fdh-carte fdh-carte-b">
+              <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></button>
+              <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}</div>
+              <div className="fdh-2btn">
+                <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
+                <button className="b-disc" onClick={() => onDiscuter(p)}>Discuter</button>
+              </div>
             </div>))}</div></section>)}
     </div>
   )
 }
 
 /* ---------------- Onglet : Match (affinités %) ---------------- */
-function MatchAffinites({ moi, mesReponses, onFaireQuestionnaire, onVoir }) {
+function MatchAffinites({ moi, mesReponses, onFaireQuestionnaire, onVoir, onDiscuter }) {
   const [liste, setListe] = useState(null)
   const [err, setErr] = useState('')
 
@@ -412,17 +418,21 @@ function MatchAffinites({ moi, mesReponses, onFaireQuestionnaire, onVoir }) {
   return (
     <div className="fdh-affs">
       <p className="fdh-affs-info">Classés par affinité avec toi ✨</p>
-      <div className="fdh-grid">
+      <div className="fdh-grid2">
         {liste.map(p => (
-          <button key={p.id} className="fdh-carte" onClick={() => onVoir(p.id)}>
-            <div className="fdh-carte-photo">
+          <div key={p.id} className="fdh-carte fdh-carte-b">
+            <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}>
               <Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" />
               <span className="fdh-pct-badge" style={{ background: couleurCompat(p.compat) }}>{p.compat}%</span>
-            </div>
+            </button>
             <div className="fdh-nom">
               {p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}
             </div>
-          </button>
+            <div className="fdh-2btn">
+              <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
+              <button className="b-disc" onClick={() => onDiscuter(p)}>Discuter</button>
+            </div>
+          </div>
         ))}
       </div>
     </div>
@@ -709,6 +719,61 @@ function Messages({ moi, ouvrir, setOuvrir }) {
   )
 }
 
+/* ---------------- Onglet : Visites (réservé Sérénité) ---------------- */
+function estAbonne(moi) {
+  return moi?.abo_statut === 'actif' && moi?.abo_expire_at && new Date(moi.abo_expire_at) > new Date()
+}
+function Visites({ moi, onVoir, onFaireAbo }) {
+  const [liste, setListe] = useState(null)
+  const [err, setErr] = useState('')
+  const abonne = estAbonne(moi)
+
+  useEffect(() => {
+    if (!moi || !abonne) return
+    let annule = false
+    ;(async () => {
+      const { data, error } = await supabase.rpc('qui_a_vu_mon_profil')
+      if (annule) return
+      if (error) setErr(error.message); else setListe(data || [])
+    })()
+    return () => { annule = true }
+  }, [moi, abonne])
+
+  if (!abonne)
+    return (
+      <div className="fdh-vide-etat">
+        <div className="fdh-vide-emoji">🔒</div>
+        <p>Qui a vu ton profil ?</p>
+        <p className="fdh-vide-sous">Réservé aux membres <b>Sérénité</b>. Découvre qui s'intéresse à toi et prends l'avantage.</p>
+        <button className="fdh-btn-rose" style={{ marginTop: '1rem' }} onClick={onFaireAbo}>Passer à Sérénité</button>
+      </div>
+    )
+
+  if (err) return <div className="fdh-msg">{err}</div>
+  if (liste === null) return <div className="fdh-msg">Chargement…</div>
+  if (liste.length === 0)
+    return <div className="fdh-vide-etat"><div className="fdh-vide-emoji">👀</div>
+      <p>Personne n'a encore vu ton profil.</p>
+      <p className="fdh-vide-sous">Complète ton profil et tes photos pour attirer plus de visites.</p></div>
+
+  return (
+    <div>
+      <p className="fdh-affs-info">Ils ont consulté ton profil 👀</p>
+      <div className="fdh-grid2">
+        {liste.map(p => (
+          <div key={p.id} className="fdh-carte fdh-carte-b">
+            <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></button>
+            <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}</div>
+            <div className="fdh-2btn">
+              <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 /* ============================================================ */
 export default function Accueil({ onDeconnexion }) {
   const [onglet, setOnglet] = useState('proximite')
@@ -722,7 +787,13 @@ export default function Accueil({ onDeconnexion }) {
   async function voirProfil(id) {
     const { data } = await supabase.from('profiles').select('*').eq('id', id).single()
     if (data) setFiche(data)
+    if (moi && id !== moi.id) {
+      supabase.from('visites')
+        .upsert({ visiteur_id: moi.id, profil_id: id, vu_at: new Date().toISOString() },
+          { onConflict: 'visiteur_id,profil_id' }).then(() => {})
+    }
   }
+  const ouvrirDiscussion = (p) => { setConversationAvec(p); setOnglet('messages') }
 
   useEffect(() => {
     ;(async () => {
@@ -735,7 +806,7 @@ export default function Accueil({ onDeconnexion }) {
     })()
   }, [])
 
-  const titres = { proximite: 'À proximité', rencontres: 'Rencontres', jaime: "J'aime", messages: 'Messages', match: 'Affinités' }
+  const titres = { proximite: 'À proximité', rencontres: 'Rencontres', jaime: "J'aime", messages: 'Messages', match: 'Affinités', visites: 'Visites' }
   const titreOverlay = { profil: 'Mon profil', questionnaire: 'Affinités' }
   const allerOnglet = (id) => { setOverlay(null); setMenuOuvert(false); setOnglet(id) }
   const ouvrirOverlay = (v) => { setOverlay(v); setMenuOuvert(false) }
@@ -770,14 +841,15 @@ export default function Accueil({ onDeconnexion }) {
           onFini={(r) => { setMesReponses(r); setOverlay(null); setOnglet('match') }} />}
         {!overlay && onglet === 'proximite' && <Proximite moi={moi} onVoir={voirProfil} />}
         {!overlay && onglet === 'rencontres' && <Rencontres moi={moi} />}
-        {!overlay && onglet === 'jaime' && <Jaime moi={moi} onOuvrirMessages={(p) => { setConversationAvec(p); setOnglet('messages') }} />}
+        {!overlay && onglet === 'jaime' && <Jaime moi={moi} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} />}
         {!overlay && onglet === 'messages' && <Messages moi={moi} ouvrir={conversationAvec} setOuvrir={setConversationAvec} />}
-        {!overlay && onglet === 'match' && <MatchAffinites moi={moi} mesReponses={mesReponses} onFaireQuestionnaire={() => ouvrirOverlay('questionnaire')} onVoir={voirProfil} />}
+        {!overlay && onglet === 'match' && <MatchAffinites moi={moi} mesReponses={mesReponses} onFaireQuestionnaire={() => ouvrirOverlay('questionnaire')} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} />}
+        {!overlay && onglet === 'visites' && <Visites moi={moi} onVoir={voirProfil} onFaireAbo={() => ouvrirOverlay('profil')} />}
       </main>
 
       <nav className="fdh-nav">
         {[['proximite', '📍', 'Proximité'], ['rencontres', '💑', 'Rencontres'], ['jaime', '❤️', "J'aime"],
-          ['messages', '💬', 'Messages'], ['match', '✨', 'Affinités']].map(([id, emoji, label]) => (
+          ['messages', '💬', 'Messages'], ['match', '✨', 'Affinités'], ['visites', '👀', 'Visites']].map(([id, emoji, label]) => (
           <button key={id} className={'fdh-tab' + (!overlay && onglet === id ? ' on' : '')} onClick={() => allerOnglet(id)}>
             <span className="fdh-tab-emoji">{emoji}</span><span className="fdh-tab-label">{label}</span>
           </button>
@@ -821,6 +893,15 @@ function Style() {
       .fdh-carte{border:0;padding:0;text-align:left;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 18px -12px rgba(58,15,56,.4);cursor:pointer}
       .fdh-carte-photo{width:100%;aspect-ratio:1 / 1.414;background:#EDE0E4;position:relative}
       .fdh-pct-badge{position:absolute;top:.5rem;right:.5rem;color:#fff;font-weight:800;font-size:.85rem;padding:.2rem .55rem;border-radius:99px;box-shadow:0 4px 10px -4px rgba(0,0,0,.4)}
+      .fdh-grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem}
+      .fdh-carte-b{display:flex;flex-direction:column}
+      .fdh-carte-b .fdh-carte-photo{border:0;padding:0;cursor:pointer;width:100%}
+      .fdh-2btn{display:flex;gap:.4rem;padding:.15rem .5rem .5rem}
+      .fdh-2btn button{flex:1;border-radius:9px;font-size:.8rem;font-weight:800;padding:.4rem 0;cursor:pointer;border:1.5px solid #E4D3D8}
+      .fdh-2btn .b-profil{background:#fff;color:#4A1546}
+      .fdh-2btn .b-profil:hover{background:#F3E7EA}
+      .fdh-2btn .b-disc{background:#D62A5E;color:#fff;border-color:#D62A5E}
+      .fdh-2btn .b-disc:hover{background:#B21F4E}
       .fdh-carte-photo .fdh-photo{width:100%;height:100%;object-fit:cover}
       .fdh-carte-photo .fdh-vide{width:100%;height:100%;font-size:3rem}
       .fdh-photo{width:100%;object-fit:cover;display:block;background:#EDE0E4}
@@ -990,9 +1071,9 @@ function Style() {
 
       /* Nav */
       .fdh-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;background:#fff;border-top:1px solid #EEE0E4;display:flex;z-index:20}
-      .fdh-tab{flex:1;border:0;background:none;cursor:pointer;padding:.5rem .2rem .6rem;display:flex;flex-direction:column;align-items:center;gap:.15rem;color:#9a8b92}
-      .fdh-tab-emoji{font-size:1.3rem;filter:grayscale(.4);opacity:.7;transition:.15s}
-      .fdh-tab-label{font-size:.66rem;font-weight:700}
+      .fdh-tab{flex:1;border:0;background:none;cursor:pointer;padding:.5rem .1rem .6rem;display:flex;flex-direction:column;align-items:center;gap:.15rem;color:#9a8b92}
+      .fdh-tab-emoji{font-size:1.2rem;filter:grayscale(.4);opacity:.7;transition:.15s}
+      .fdh-tab-label{font-size:.6rem;font-weight:700}
       .fdh-tab.on{color:#D62A5E}
       .fdh-tab.on .fdh-tab-emoji{filter:none;opacity:1;transform:translateY(-1px)}
     `}</style>
