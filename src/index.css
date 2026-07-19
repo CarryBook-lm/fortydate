@@ -1,0 +1,22 @@
+/* FortyDate — styles de base (remplace le index.css par défaut de Vite) */
+* { box-sizing: border-box; }
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  background: #FBF4F5;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: #3A0F38;
+  -webkit-font-smoothing: antialiased;
+}
+
+img { display: block; max-width: 100%; }
+
+button { font-family: inherit; }
+
+a { color: inherit; }
