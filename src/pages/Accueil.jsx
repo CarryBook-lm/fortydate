@@ -840,7 +840,7 @@ function Abonnement({ moi, onFini, onClose }) {
       const { data: { user } } = await supabase.auth.getUser()
       const r = await fetch('/api/chariow-checkout', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: plan.id, user_id: moi.id, email: user?.email, first_name: moi.prenom, phone: tel })
+        body: JSON.stringify({ plan: plan.id, user_id: moi.id, email: user?.email, first_name: moi.prenom, phone: tel || moi.telephone, pays: moi.pays_residence })
       })
       const d = await r.json()
       if (d.checkout_url) window.location.href = d.checkout_url

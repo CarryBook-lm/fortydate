@@ -9,12 +9,13 @@ const JOURS = { bienvenue: 30, hebdo: 7, mensuel: 30 }
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Méthode non autorisée' })
   try {
-    const { plan, user_id, email, first_name, phone } = req.body || {}
+    const { plan, user_id, email, first_name, phone, pays } = req.body || {}
     const product_id = PRODUITS[plan]
     if (!product_id || !user_id || !email) return res.status(400).json({ error: 'Champs manquants' })
 
-    let num = String(phone || '').replace(/\D/g, '').replace(/^237/, '')
-    if (num.length < 8) num = '600000000'
+    // Comme MaBoutik : on garde les chiffres du numéro (ou un repli), et le VRAI pays de l'utilisateur
+    const num = String(phone || '').replace(/[^0-9]/g, '') || '000000000'
+    const country = String(pays || 'CM').toUpperCase()
 
     const r = await fetch('https://api.chariow.com/v1/checkout', {
       method: 'POST',
@@ -24,7 +25,7 @@ export default async function handler(req, res) {
         email,
         first_name: first_name || 'Membre',
         last_name: 'FortyDate',
-        phone: { number: num, country_code: 'CM' },
+        phone: { number: num, country_code: country },
         redirect_url: 'https://fortydate.com/?abo=ok',
         custom_metadata: { user_id, jours: String(JOURS[plan] || 30) }
       })

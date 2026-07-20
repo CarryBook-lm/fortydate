@@ -81,6 +81,7 @@ export default function Inscription({ onComplete }) {
       if (!f.prenom.trim()) return 'Ton prénom est requis.'
       if (!/^[^@]+@[^@]+\.[^@]+$/.test(f.email)) return 'Email invalide.'
       if (f.password.length < 6) return 'Mot de passe : 6 caractères minimum.'
+      if (String(f.telephone).replace(/\D/g, '').length < 8) return 'Ton numéro de téléphone est requis (au moins 8 chiffres).'
       if (!f.date_naissance) return 'Ta date de naissance est requise.'
       if (ageDepuis(f.date_naissance) < 40) return 'FortyDate est réservé aux personnes de 40 ans et plus.'
       if (!f.genre) return 'Indique si tu es un homme ou une femme.'
@@ -115,7 +116,7 @@ export default function Inscription({ onComplete }) {
         date_naissance: f.date_naissance,
         genre: f.genre,
         recherche_genre: f.recherche_genre,
-        telephone: f.telephone || null,
+        telephone: f.telephone.trim(),
         pays_residence: f.pays_residence,
         ville: f.ville || null,
         recherche_mode: f.recherche_mode,
@@ -188,7 +189,7 @@ export default function Inscription({ onComplete }) {
             <Input label="Email" type="email" value={f.email} onChange={v => set('email', v)} />
             <label className="fd-l">Mot de passe</label>
             <ChampMotDePasse value={f.password} onChange={v => set('password', v)} />
-            <Input label="Téléphone (WhatsApp)" value={f.telephone} onChange={v => set('telephone', v)} placeholder="+237..." />
+            <Input label="Téléphone (obligatoire)" value={f.telephone} onChange={v => set('telephone', v)} placeholder="Ex : 6XXXXXXXX" />
             <DateNaissance value={f.date_naissance} onChange={v => set('date_naissance', v)} />
             <Choix label="Je suis" value={f.genre} onChange={v => set('genre', v)}
               options={[['homme', 'Un homme'], ['femme', 'Une femme']]} />
