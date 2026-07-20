@@ -1107,13 +1107,13 @@ function Style() {
       .fdh-app{min-height:100vh;background:#FBF4F5;font-family:system-ui,'Segoe UI',sans-serif;
         color:#3A0F38;display:flex;flex-direction:column;max-width:520px;margin:0 auto;position:relative}
       .fdh-header{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #EEE0E4;
-        padding:.9rem 1.1rem;display:flex;align-items:center;gap:.7rem}
+        padding:.9rem 1.1rem;padding-top:calc(.9rem + env(safe-area-inset-top));display:flex;align-items:center;gap:.7rem}
       .fdh-burger{background:none;border:0;font-size:1.4rem;cursor:pointer;color:#4A1546;line-height:1}
       .fdh-logo{font-weight:800;font-size:1.2rem}
       .fdh-logo .f{color:#4A1546}.fdh-logo .d{color:#D62A5E}
       .fdh-logo-img{height:46px;width:auto;display:block;object-fit:contain}
       .fdh-titre-page{font-size:.95rem;color:#7A6B74;font-weight:700;margin-left:auto}
-      .fdh-main{flex:1;padding:1rem 1rem calc(72px + 1rem);overflow-y:auto}
+      .fdh-main{flex:1;padding:1rem 1rem calc(72px + 1rem + env(safe-area-inset-bottom));overflow-y:auto}
 
       /* Drawer */
       .fdh-drawer-fond{position:fixed;inset:0;background:rgba(36,10,42,.5);z-index:60}
@@ -1355,7 +1355,7 @@ function Style() {
       @keyframes fdspin{to{transform:rotate(360deg)}}
 
       /* Nav */
-      .fdh-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;background:#fff;border-top:1px solid #EEE0E4;display:flex;z-index:20}
+      .fdh-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;background:#fff;border-top:1px solid #EEE0E4;display:flex;z-index:20;padding-bottom:env(safe-area-inset-bottom)}
       .fdh-tab{flex:1;border:0;background:none;cursor:pointer;padding:.5rem .1rem .6rem;display:flex;flex-direction:column;align-items:center;gap:.15rem;color:#9a8b92}
       .fdh-tab-emoji{font-size:1.2rem;filter:grayscale(.4);opacity:.7;transition:.15s}
       .fdh-tab-label{font-size:.6rem;font-weight:700}
