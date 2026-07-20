@@ -1194,12 +1194,134 @@ function MotDePasse({ onClose }) {
 }
 
 /* ============================================================ */
+/* ---------------- Page S.Admin (réservée à l'admin) ---------------- */
+function Admin({ onVoir }) {
+  const [vue, setVue] = useState('stats') // stats | membres | paiements
+  const [membres, setMembres] = useState(null)
+  const [paiements, setPaiements] = useState(null)
+  const [recherche, setRecherche] = useState('')
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => {
+    ;(async () => {
+      const { data: m } = await supabase.from('profiles')
+        .select('id, prenom, date_naissance, genre, pays_residence, ville, photo_principale, telephone, abo_statut, abo_expire_at, bloque')
+        .order('prenom', { ascending: true }).limit(500)
+      setMembres(m || [])
+      const { data: p } = await supabase.from('paiements').select('*').limit(300)
+      setPaiements(p || [])
+    })()
+  }, [])
+
+  const abonneActif = (x) => x?.abo_statut === 'actif' && x?.abo_expire_at && new Date(x.abo_expire_at) > new Date()
+
+  // Statistiques
+  const stats = (() => {
+    const ms = membres || []
+    const total = ms.length
+    const abonnes = ms.filter(abonneActif).length
+    const hommes = ms.filter(x => x.genre === 'homme').length
+    const femmes = ms.filter(x => x.genre === 'femme').length
+    const bloques = ms.filter(x => x.bloque).length
+    const revenus = (paiements || []).reduce((s, p) => s + (Number(p.montant) || 0), 0)
+    return { total, abonnes, hommes, femmes, bloques, revenus }
+  })()
+
+  async function basculerBlocage(m) {
+    setMsg('')
+    const nouv = !m.bloque
+    const { error } = await supabase.from('profiles').update({ bloque: nouv }).eq('id', m.id)
+    if (error) { setMsg('Échec : ' + error.message); return }
+    setMembres(list => list.map(x => x.id === m.id ? { ...x, bloque: nouv } : x))
+  }
+
+  async function supprimerMembre(m) {
+    if (!window.confirm(`Supprimer définitivement le profil de ${m.prenom} ? Cette action est irréversible.`)) return
+    setMsg('')
+    const { error } = await supabase.from('profiles').delete().eq('id', m.id)
+    if (error) { setMsg('Échec : ' + error.message); return }
+    setMembres(list => list.filter(x => x.id !== m.id))
+  }
+
+  const membresFiltres = (membres || []).filter(m => {
+    if (!recherche.trim()) return true
+    const q = recherche.toLowerCase()
+    return (m.prenom || '').toLowerCase().includes(q)
+      || (m.ville || '').toLowerCase().includes(q)
+      || (m.telephone || '').includes(q)
+  })
+
+  if (membres === null) return <div className="fdh-msg">Chargement…</div>
+
+  return (
+    <div className="fdh-admin">
+      <h2 className="fdh-admin-titre">🛡️ Espace Admin</h2>
+      <div className="fdh-sousongl">
+        <button className={'fdh-sous' + (vue === 'stats' ? ' on' : '')} onClick={() => setVue('stats')}>Stats</button>
+        <button className={'fdh-sous' + (vue === 'membres' ? ' on' : '')} onClick={() => setVue('membres')}>Membres</button>
+        <button className={'fdh-sous' + (vue === 'paiements' ? ' on' : '')} onClick={() => setVue('paiements')}>Paiements</button>
+      </div>
+      {msg && <div className="fdh-abo-msg err">{msg}</div>}
+
+      {vue === 'stats' && (
+        <div className="fdh-stats">
+          <div className="fdh-stat"><div className="fdh-stat-n">{stats.total}</div><div className="fdh-stat-l">Membres</div></div>
+          <div className="fdh-stat on"><div className="fdh-stat-n">{stats.abonnes}</div><div className="fdh-stat-l">Abonnés Sérénité</div></div>
+          <div className="fdh-stat"><div className="fdh-stat-n">{stats.hommes}</div><div className="fdh-stat-l">Hommes</div></div>
+          <div className="fdh-stat"><div className="fdh-stat-n">{stats.femmes}</div><div className="fdh-stat-l">Femmes</div></div>
+          <div className="fdh-stat"><div className="fdh-stat-n">{stats.bloques}</div><div className="fdh-stat-l">Bloqués</div></div>
+          <div className="fdh-stat or"><div className="fdh-stat-n">{stats.revenus.toLocaleString('fr-FR')} F</div><div className="fdh-stat-l">Revenus encaissés</div></div>
+        </div>
+      )}
+
+      {vue === 'membres' && (
+        <div>
+          <input className="fdh-ein" style={{ marginBottom: '.8rem' }} value={recherche} placeholder="🔎 Chercher (prénom, ville, téléphone)…" onChange={e => setRecherche(e.target.value)} />
+          <div className="fdh-adm-liste">
+            {membresFiltres.map(m => (
+              <div key={m.id} className={'fdh-adm-membre' + (m.bloque ? ' bloque' : '')}>
+                <Avatar url={m.photo_principale} prenom={m.prenom} taille="44px" />
+                <div className="fdh-adm-info" onClick={() => onVoir(m.id)}>
+                  <div className="fdh-adm-nom">{m.prenom}{ageDepuis(m.date_naissance) ? `, ${ageDepuis(m.date_naissance)}` : ''}{abonneActif(m) ? ' ⭐' : ''}{m.bloque ? ' 🚫' : ''}</div>
+                  <div className="fdh-adm-sous">{m.genre || '—'} · {NOM_PAYS[m.pays_residence] || m.pays_residence || '?'}{m.ville ? ' · ' + m.ville : ''}</div>
+                </div>
+                <div className="fdh-adm-actions">
+                  <button className="fdh-adm-btn" onClick={() => basculerBlocage(m)}>{m.bloque ? 'Débloquer' : 'Bloquer'}</button>
+                  <button className="fdh-adm-btn danger" onClick={() => supprimerMembre(m)}>🗑️</button>
+                </div>
+              </div>
+            ))}
+            {membresFiltres.length === 0 && <p className="fdh-msg">Aucun membre.</p>}
+          </div>
+        </div>
+      )}
+
+      {vue === 'paiements' && (
+        <div className="fdh-adm-liste">
+          {(paiements || []).map((p, k) => (
+            <div key={p.id || k} className="fdh-adm-paie">
+              <div>
+                <div className="fdh-adm-nom">{(Number(p.montant) || 0).toLocaleString('fr-FR')} {p.devise || 'F'}</div>
+                <div className="fdh-adm-sous">{p.source || '—'} · {p.reference || ''}</div>
+              </div>
+              <div className="fdh-adm-date">{(p.cree_at || p.created_at) ? new Date(p.cree_at || p.created_at).toLocaleDateString('fr-FR') : ''}</div>
+            </div>
+          ))}
+          {(paiements || []).length === 0 && <p className="fdh-msg">Aucun paiement enregistré.</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ============================================================ */
 export default function Accueil({ onDeconnexion }) {
   const [onglet, setOnglet] = useState(() => {
     try { return localStorage.getItem('fd_onglet') || 'proximite' } catch (_) { return 'proximite' }
   })
   useEffect(() => { try { localStorage.setItem('fd_onglet', onglet) } catch (_) {} }, [onglet])
   const [moi, setMoi] = useState(null)
+  const [estAdmin, setEstAdmin] = useState(false)
   const [mesReponses, setMesReponses] = useState(null) // réponses affinités
   const [conversationAvec, setConversationAvec] = useState(null)
   const [overlay, setOverlay] = useState(null)  // 'profil' | 'questionnaire' | null
@@ -1229,6 +1351,8 @@ export default function Accueil({ onDeconnexion }) {
     ;(async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+      const adminEmail = (import.meta.env.VITE_ADMIN_EMAIL || '').trim().toLowerCase()
+      if (adminEmail && (user.email || '').trim().toLowerCase() === adminEmail) setEstAdmin(true)
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', user.id).single()
       setMoi(prof)
       const { data: aff } = await supabase.from('affinites').select('reponses').eq('profile_id', user.id).maybeSingle()
@@ -1274,7 +1398,7 @@ export default function Accueil({ onDeconnexion }) {
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Abonnement : Passez à Sérénité</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #C</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #D</div>
           </div>
         </div>
       )}
@@ -1290,11 +1414,13 @@ export default function Accueil({ onDeconnexion }) {
         {!overlay && onglet === 'messages' && <Messages moi={moi} ouvrir={conversationAvec} setOuvrir={setConversationAvec} />}
         {!overlay && onglet === 'match' && <MatchAffinites moi={moi} mesReponses={mesReponses} onFaireQuestionnaire={() => ouvrirOverlay('questionnaire')} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} />}
         {!overlay && onglet === 'visites' && <Visites moi={moi} onVoir={voirProfil} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
+        {!overlay && onglet === 'admin' && estAdmin && <Admin onVoir={voirProfil} />}
       </main>
 
       <nav className="fdh-nav">
         {[['proximite', '📍', 'Proximité'], ['rencontres', '💑', 'Rencontres'], ['jaime', '❤️', "J'aime"],
-          ['messages', '💬', 'Messages'], ['match', '✨', 'Affinités'], ['visites', '👀', 'Visites']].map(([id, emoji, label]) => (
+          ['messages', '💬', 'Messages'], ['match', '✨', 'Affinités'],
+          estAdmin ? ['admin', '🛡️', 'S.Admin'] : ['visites', '👀', 'Visites']].map(([id, emoji, label]) => (
           <button key={id} className={'fdh-tab' + (!overlay && onglet === id ? ' on' : '')} onClick={() => allerOnglet(id)}>
             <span className="fdh-tab-emoji">{emoji}</span><span className="fdh-tab-label">{label}</span>
           </button>
@@ -1462,6 +1588,26 @@ function Style() {
       .fdh-sous.on{background:#D62A5E;border-color:#D62A5E;color:#fff}
       .fdh-sous span{background:rgba(255,255,255,.3);color:inherit;font-size:.75rem;padding:.05rem .45rem;border-radius:99px}
       .fdh-sous:not(.on) span{background:#D62A5E;color:#fff}
+      .fdh-admin-titre{font-size:1.3rem;color:#4A1546;margin:.2rem 0 1rem}
+      .fdh-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
+      .fdh-stat{background:#fff;border:1.5px solid #EEE0E4;border-radius:14px;padding:1rem;text-align:center}
+      .fdh-stat.on{background:#FBE9EF;border-color:#F5C2D3}
+      .fdh-stat.or{background:#FBF3E4;border-color:#EBD6A8;grid-column:1 / -1}
+      .fdh-stat-n{font-size:1.6rem;font-weight:800;color:#4A1546}
+      .fdh-stat-l{font-size:.82rem;color:#7A6B74;margin-top:.2rem}
+      .fdh-adm-liste{display:flex;flex-direction:column;gap:.5rem}
+      .fdh-adm-membre{display:flex;align-items:center;gap:.7rem;background:#fff;border:1.5px solid #EEE0E4;border-radius:12px;padding:.6rem .7rem}
+      .fdh-adm-membre.bloque{background:#fbeaea;border-color:#f3c0c0}
+      .fdh-adm-membre .fdh-photo{width:44px;height:44px;border-radius:50%;object-fit:cover;flex:0 0 auto}
+      .fdh-adm-membre .fdh-vide{width:44px;height:44px;border-radius:50%;font-size:1.1rem}
+      .fdh-adm-info{flex:1;min-width:0;cursor:pointer}
+      .fdh-adm-nom{font-weight:800;color:#3A0F38;font-size:.95rem}
+      .fdh-adm-sous{font-size:.78rem;color:#8a7b82}
+      .fdh-adm-actions{display:flex;flex-direction:column;gap:.3rem;flex:0 0 auto}
+      .fdh-adm-btn{background:#fff;border:1.5px solid #E4D3D8;border-radius:8px;padding:.35rem .6rem;font-size:.78rem;font-weight:700;color:#4A1546;cursor:pointer}
+      .fdh-adm-btn.danger{background:#fdeef2;border-color:#f3c0c0;color:#B21F4E}
+      .fdh-adm-paie{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1.5px solid #EEE0E4;border-radius:12px;padding:.7rem .8rem}
+      .fdh-adm-date{font-size:.78rem;color:#8a7b82}
       .fdh-section-titre span{background:#D62A5E;color:#fff;font-size:.72rem;padding:.1rem .5rem;border-radius:99px}
       .fdh-jgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem}
       .fdh-jcarte{background:#fff;border:0;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 8px 22px -14px rgba(58,15,56,.4);text-align:center;padding-bottom:.7rem}
