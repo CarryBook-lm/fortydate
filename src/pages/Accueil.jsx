@@ -6,6 +6,7 @@
 // ============================================================
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { uploadPhotoOptimisee } from '../lib/photo'
 
 /* ---------------- Questionnaire d'affinités (30 questions) ---------------- */
 // nominal:true  -> il faut la même réponse (0 ou 1)
@@ -742,14 +743,11 @@ function MonProfil({ moi, onDeconnexion, onMaj }) {
 
   async function ajouterPhoto(file) {
     if (!file) return
-    if (album.length >= 9) { setMsg('Album complet (9 photos maximum).'); return }
+    if (album.length >= 5) { setMsg('Album complet (5 photos maximum).'); return }
     setEnvoi(true); setMsg('')
     try {
-      const nom = `${moi.id}/${Date.now()}_${file.name}`
-      const { error } = await supabase.storage.from('avatars').upload(nom, file, { upsert: true })
-      if (error) throw error
-      const { data } = supabase.storage.from('avatars').getPublicUrl(nom)
-      const url = data.publicUrl
+      const url = await uploadPhotoOptimisee(file, moi.id)
+      if (album.includes(url)) { setMsg('Cette photo est déjà dans ton album 👍'); return }
       const nouvelAlbum = [...album, url]
       const maj = { photos: nouvelAlbum }
       if (!moi.photo_principale) maj.photo_principale = url // 1re photo = photo de profil
@@ -1554,7 +1552,7 @@ export default function Accueil({ onDeconnexion }) {
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #L</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #M</div>
           </div>
         </div>
       )}

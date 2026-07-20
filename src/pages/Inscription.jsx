@@ -13,6 +13,7 @@
 // ============================================================
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { uploadPhotoOptimisee } from '../lib/photo'
 
 // ---------- Données de référence ----------
 const PAYS = [
@@ -166,11 +167,8 @@ export default function Inscription({ onComplete }) {
     setLoading(true); setErr('')
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      const nom = `${user.id}/${Date.now()}_${file.name}`
-      const { error } = await supabase.storage.from('avatars').upload(nom, file, { upsert: true })
-      if (error) throw error
-      const { data } = supabase.storage.from('avatars').getPublicUrl(nom)
-      set('photo_principale', data.publicUrl)
+      const url = await uploadPhotoOptimisee(file, user.id)
+      set('photo_principale', url)
     } catch (e) {
       setErr("Photo : crée d'abord un bucket public 'avatars' dans Supabase Storage.")
     } finally {
