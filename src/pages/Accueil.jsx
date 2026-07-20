@@ -1343,7 +1343,7 @@ function Style() {
       .fdh-carte-photo .fdh-vide{width:100%;height:100%;font-size:3rem}
       .fdh-photo{width:100%;object-fit:cover;display:block;background:#EDE0E4}
       .fdh-vide{display:grid;place-items:center;font-size:2.4rem;font-weight:800;color:#fff;background:linear-gradient(150deg,#7A2233,#D62A5E)}
-      .fdh-nom{padding:.5rem .6rem;font-size:.82rem;font-weight:700;display:flex;align-items:center;gap:.3rem}
+      .fdh-nom{padding:.5rem .6rem;font-size:.82rem;font-weight:700;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;min-height:2.3rem}
       .fdh-point{width:8px;height:8px;border-radius:50%;background:#3ecf6b;flex:0 0 auto}
 
       .fdh-msg{text-align:center;color:#7A6B74;padding:2rem}
