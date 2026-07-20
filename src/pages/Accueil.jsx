@@ -137,6 +137,22 @@ const NOM_PAYS = {
 }
 function couleurCompat(p) { return p >= 80 ? '#1c8a3e' : p >= 60 ? '#C69A4E' : '#9a8b92' }
 
+// Un profil est-il abonné Sérénité (badge visible) ?
+function estAbonneP(p) {
+  return p?.abo_statut === 'actif' && p?.abo_expire_at && new Date(p.abo_expire_at) > new Date()
+}
+
+// Coche rose « Sérénité » à afficher à côté du prénom
+function Badge({ p, size = 18 }) {
+  if (!estAbonneP(p)) return null
+  return (
+    <svg className="fdh-badge" width={size} height={size} viewBox="0 0 24 24" aria-label="Membre Sérénité" style={{ verticalAlign: 'middle', marginLeft: 4, flexShrink: 0 }}>
+      <path fill="#D62A5E" d="M12 1.5l2.3 1.7 2.85-.15 1 2.68 2.5 1.37-.62 2.79 1.72 2.28-1.72 2.28.62 2.79-2.5 1.37-1 2.68-2.85-.15L12 22.5l-2.3-1.7-2.85.15-1-2.68-2.5-1.37.62-2.79L2.25 12l1.72-2.28-.62-2.79 2.5-1.37 1-2.68 2.85.15L12 1.5z"/>
+      <path fill="#fff" d="M10.6 15.2l-3-3 1.4-1.4 1.6 1.6 3.9-3.9 1.4 1.4-5.3 5.3z"/>
+    </svg>
+  )
+}
+
 // Listes pour l'édition du profil
 const INDICATIFS = [
   { c: 'CM', d: '+237', f: '🇨🇲' }, { c: 'CI', d: '+225', f: '🇨🇮' }, { c: 'SN', d: '+221', f: '🇸🇳' },
@@ -213,7 +229,7 @@ function FicheProfil({ profil, onFermer }) {
           </div>
         )}
         <div className="fdh-fiche-corps">
-          <h2 className="fdh-fiche-nom">{profil.prenom}{age ? `, ${age}` : ''}</h2>
+          <h2 className="fdh-fiche-nom">{profil.prenom}{age ? `, ${age}` : ''}<Badge p={profil} size={22} /></h2>
           <p className="fdh-fiche-lieu">📍 {profil.ville ? profil.ville + ' · ' : ''}{NOM_PAYS[profil.pays_residence] || profil.pays_residence}</p>
           {profil.bio && <p className="fdh-fiche-bio">« {profil.bio} »</p>}
 
@@ -250,7 +266,7 @@ function Proximite({ moi, onVoir }) {
     ;(async () => {
       try {
         const { data, error } = await supabase.from('profiles')
-          .select('id, prenom, date_naissance, photo_principale')
+          .select('id, prenom, date_naissance, photo_principale, abo_statut, abo_expire_at')
           .neq('id', moi.id).limit(100)
         if (error) throw error
         if (!annule) setProfils(data || [])
@@ -272,7 +288,7 @@ function Proximite({ moi, onVoir }) {
         <button key={p.id} className="fdh-carte" onClick={() => onVoir(p.id)}>
           <div className="fdh-carte-photo"><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></div>
           <div className="fdh-nom"><span className="fdh-point" />
-            {p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}</div>
+            {p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} /></div>
         </button>
       ))}
     </div>
@@ -294,7 +310,7 @@ function Rencontres({ moi }) {
       try {
         const { data: vus } = await supabase.from('likes').select('cible_id').eq('auteur_id', moi.id)
         const exclus = new Set((vus || []).map(x => x.cible_id)); exclus.add(moi.id)
-        const { data, error } = await requeteCandidats(moi, 'id, prenom, date_naissance, pays_residence, ville, photo_principale, bio, interets')
+        const { data, error } = await requeteCandidats(moi, 'id, prenom, date_naissance, pays_residence, ville, photo_principale, bio, interets, abo_statut, abo_expire_at')
         if (error) throw error
         if (!annule) setProfils((data || []).filter(p => !exclus.has(p.id)))
       } catch (e) { if (!annule) setErr(e.message || 'Erreur.') }
@@ -326,7 +342,7 @@ function Rencontres({ moi }) {
         <div className="fdh-swipe-photo">
           <Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" />
           <div className="fdh-swipe-info">
-            <h2>{p.prenom}{age ? `, ${age}` : ''}</h2>
+            <h2>{p.prenom}{age ? `, ${age}` : ''}<Badge p={p} size={20} /></h2>
             <p className="fdh-swipe-lieu">{p.ville ? p.ville + ' · ' : ''}{NOM_PAYS[p.pays_residence] || p.pays_residence}</p>
             {p.bio && <p className="fdh-swipe-bio">{p.bio}</p>}
             {p.interets?.length > 0 && <div className="fdh-swipe-tags">{p.interets.slice(0, 4).map(t => <span key={t}>{t}</span>)}</div>}
@@ -380,7 +396,7 @@ function Jaime({ moi, onVoir, onDiscuter }) {
           <div className="fdh-grid2">{matchs.map(p => (
             <div key={p.id} className="fdh-carte fdh-carte-b">
               <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></button>
-              <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}</div>
+              <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></div>
               <div className="fdh-2btn">
                 <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
                 <button className="b-disc" onClick={() => onDiscuter(p)}>Discuter</button>
@@ -391,7 +407,7 @@ function Jaime({ moi, onVoir, onDiscuter }) {
           <div className="fdh-grid2">{recus.map(p => (
             <div key={p.id} className="fdh-carte fdh-carte-b">
               <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></button>
-              <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}</div>
+              <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></div>
               <div className="fdh-2btn">
                 <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
                 <button className="b-disc" onClick={() => onDiscuter(p)}>Discuter</button>
@@ -411,7 +427,7 @@ function MatchAffinites({ moi, mesReponses, onFaireQuestionnaire, onVoir, onDisc
     let annule = false
     ;(async () => {
       try {
-        const { data: cands, error } = await requeteCandidats(moi, 'id, prenom, date_naissance, pays_residence, ville, photo_principale')
+        const { data: cands, error } = await requeteCandidats(moi, 'id, prenom, date_naissance, pays_residence, ville, photo_principale, abo_statut, abo_expire_at')
         if (error) throw error
         const ids = (cands || []).map(c => c.id)
         let affMap = {}
@@ -709,7 +725,7 @@ function MonProfil({ moi, onDeconnexion, onMaj }) {
   return (
     <div className="fdh-profil">
       <Avatar url={moi.photo_principale} prenom={moi.prenom} taille="120px" />
-      <h2 className="fdh-profil-nom">{moi.prenom}{age ? `, ${age}` : ''}</h2>
+      <h2 className="fdh-profil-nom">{moi.prenom}{age ? `, ${age}` : ''}<Badge p={moi} size={22} /></h2>
       <p className="fdh-profil-lieu">{moi.ville ? moi.ville + ' · ' : ''}{NOM_PAYS[moi.pays_residence] || moi.pays_residence}</p>
       {moi.bio && <p className="fdh-profil-bio">« {moi.bio} »</p>}
 
@@ -829,7 +845,7 @@ function Chat({ moi, contact, onRetour }) {
       <div className="fdh-chat-head">
         <button className="fdh-retour" onClick={onRetour}>‹</button>
         <Avatar url={contact.photo_principale} prenom={contact.prenom} taille="38px" />
-        <span className="fdh-chat-nom">{contact.prenom}</span>
+        <span className="fdh-chat-nom">{contact.prenom}<Badge p={contact} /></span>
       </div>
 
       <div className="fdh-chat-fil">
@@ -885,7 +901,7 @@ function Messages({ moi, ouvrir, setOuvrir }) {
       {matchs.map(p => (
         <button key={p.id} className="fdh-conv" onClick={() => setOuvrir(p)}>
           <Avatar url={p.photo_principale} prenom={p.prenom} taille="52px" />
-          <div className="fdh-conv-txt"><div className="fdh-conv-nom">{p.prenom}</div>
+          <div className="fdh-conv-txt"><div className="fdh-conv-nom">{p.prenom}<Badge p={p} size={16} /></div>
             <div className="fdh-conv-apercu">Appuie pour discuter</div></div>
           <span className="fdh-conv-fleche">›</span>
         </button>
@@ -938,7 +954,7 @@ function Visites({ moi, onVoir, onFaireAbo }) {
         {liste.map(p => (
           <div key={p.id} className="fdh-carte fdh-carte-b">
             <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></button>
-            <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}</div>
+            <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></div>
             <div className="fdh-2btn">
               <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
             </div>
