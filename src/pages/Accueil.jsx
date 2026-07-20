@@ -887,10 +887,13 @@ function Abonnement({ moi, onFini, onClose }) {
             <div className="fdh-modal-badge">{plan.nom} · {plan.prix.toLocaleString('fr-FR')} F</div>
             <h2 className="fdh-methode-titre">Choisis ta méthode</h2>
             <p className="fdh-modal-sous">Avec quel moyen veux-tu payer ?</p>
-            <button className="fdh-btn-mtn" onClick={() => { setMsg(''); setOperateur('MTN'); setEtape('numero') }}>📱 MTN Mobile Money</button>
-            <button className="fdh-btn-orange" onClick={() => { setMsg(''); setOperateur('ORANGE'); setEtape('numero') }}>📱 Orange Money</button>
-            {!estCameroun && (
-              <button className="fdh-btn-outline" style={{ width: '100%', marginTop: '.6rem' }} onClick={payerChariow}>💳 Carte bancaire / autre pays</button>
+            {estCameroun ? (
+              <>
+                <button className="fdh-btn-mtn" onClick={() => { setMsg(''); setOperateur('MTN'); setEtape('numero') }}>📱 MTN Mobile Money</button>
+                <button className="fdh-btn-orange" onClick={() => { setMsg(''); setOperateur('ORANGE'); setEtape('numero') }}>📱 Orange Money</button>
+              </>
+            ) : (
+              <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '.6rem' }} onClick={payerChariow}>💳 Payer par carte / Mobile Money</button>
             )}
             {msg && <div className="fdh-abo-msg err">{msg}</div>}
             <button className="fdh-btn-texte" onClick={() => setEtape('plans')}>← Retour</button>
