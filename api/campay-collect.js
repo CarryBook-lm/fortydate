@@ -21,7 +21,7 @@ export default async function handler(req, res) {
         currency: 'XAF',
         from: tel,
         description: description || 'Abonnement Serenite FortyDate',
-        external_reference: `FD_${user_id}_${dureeJours}`   // format propre (comme CarryBooks) : lettres/chiffres/underscores
+        external_reference: `FD_${user_id}_${dureeJours}_${Date.now()}`   // unique à chaque tentative (comme CarryBooks) → pas de doublon
       })
     })
     const data = await r.json()

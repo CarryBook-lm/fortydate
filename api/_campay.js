@@ -16,7 +16,7 @@ export async function activerAbonnement(t) {
   const ref = String(t.external_reference || '')
   let userId, joursStr
   if (ref.startsWith('FD_')) {
-    const parts = ref.split('_')      // ['FD', user_id, jours]
+    const parts = ref.split('_')      // ['FD', user_id, jours, timestamp]
     userId = parts[1]
     joursStr = parts[2]
   } else {
