@@ -49,17 +49,10 @@ export default function Landing({ onInscription, onConnexion }) {
           <span>La rencontre sérieuse à partir de 40 ans</span>
         </div>
 
-        <h1 className="fdl-titre">
-          L'amour<br />n'a pas d'âge,<br />
-          <span className="fdl-rose">la sincérité</span><br />fait la différence.
-        </h1>
-
-        <div className="fdl-coeur-deco"><Coeur t={40} /></div>
-
         <div className="fdl-photo">
           <img
             src="/hero.png"
-            alt=""
+            alt="L'amour n'a pas d'âge, la sincérité fait la différence"
             onError={(e) => { e.currentTarget.classList.add('vide') }}
           />
           <div className="fdl-photo-txt">
