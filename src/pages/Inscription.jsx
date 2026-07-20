@@ -33,6 +33,37 @@ const INTERETS = ['Voyages', 'Cuisine', 'Foi', 'Musique', 'Sport', 'Lecture', 'C
 const LANGUES = ['Français', 'Anglais', 'Arabe', 'Espagnol', 'Portugais', 'Langue locale']
 const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 
+// Indicatif téléphonique + drapeau par pays (ordre = liste d'indicatifs)
+const INDICATIFS = [
+  { c: 'CM', d: '+237', f: '🇨🇲', n: 'Cameroun' },
+  { c: 'CI', d: '+225', f: '🇨🇮', n: "Côte d'Ivoire" },
+  { c: 'SN', d: '+221', f: '🇸🇳', n: 'Sénégal' },
+  { c: 'BJ', d: '+229', f: '🇧🇯', n: 'Bénin' },
+  { c: 'BF', d: '+226', f: '🇧🇫', n: 'Burkina Faso' },
+  { c: 'ML', d: '+223', f: '🇲🇱', n: 'Mali' },
+  { c: 'TG', d: '+228', f: '🇹🇬', n: 'Togo' },
+  { c: 'NE', d: '+227', f: '🇳🇪', n: 'Niger' },
+  { c: 'GA', d: '+241', f: '🇬🇦', n: 'Gabon' },
+  { c: 'CG', d: '+242', f: '🇨🇬', n: 'Congo' },
+  { c: 'CD', d: '+243', f: '🇨🇩', n: 'RD Congo' },
+  { c: 'GN', d: '+224', f: '🇬🇳', n: 'Guinée' },
+  { c: 'TD', d: '+235', f: '🇹🇩', n: 'Tchad' },
+  { c: 'CF', d: '+236', f: '🇨🇫', n: 'Centrafrique' },
+  { c: 'MA', d: '+212', f: '🇲🇦', n: 'Maroc' },
+  { c: 'DZ', d: '+213', f: '🇩🇿', n: 'Algérie' },
+  { c: 'TN', d: '+216', f: '🇹🇳', n: 'Tunisie' },
+  { c: 'FR', d: '+33', f: '🇫🇷', n: 'France' },
+  { c: 'BE', d: '+32', f: '🇧🇪', n: 'Belgique' },
+  { c: 'CH', d: '+41', f: '🇨🇭', n: 'Suisse' },
+  { c: 'CA', d: '+1', f: '🇨🇦', n: 'Canada' },
+  { c: 'US', d: '+1', f: '🇺🇸', n: 'États-Unis' },
+  { c: 'GB', d: '+44', f: '🇬🇧', n: 'Royaume-Uni' },
+  { c: 'DE', d: '+49', f: '🇩🇪', n: 'Allemagne' },
+  { c: 'IT', d: '+39', f: '🇮🇹', n: 'Italie' },
+  { c: 'ES', d: '+34', f: '🇪🇸', n: 'Espagne' },
+  { c: 'PT', d: '+351', f: '🇵🇹', n: 'Portugal' },
+]
+
 function devisePourPays(c) {
   if (['CM', 'GA', 'TD', 'CF', 'CG', 'GQ'].includes(c)) return 'XAF'
   if (['CI', 'SN', 'BJ', 'BF', 'ML', 'NE', 'TG', 'GW'].includes(c)) return 'XOF'
@@ -59,7 +90,7 @@ export default function Inscription({ onComplete }) {
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
   const [f, setF] = useState({
-    email: '', password: '', telephone: '', prenom: '', date_naissance: '',
+    email: '', password: '', telephone: '', indicatif: '+237', prenom: '', date_naissance: '',
     genre: '', recherche_genre: '',
     pays_residence: '', ville: '', recherche_mode: 'mon_pays', recherche_pays: [],
     situation: '', enfants: '', profession: '',
@@ -116,7 +147,7 @@ export default function Inscription({ onComplete }) {
         date_naissance: f.date_naissance,
         genre: f.genre,
         recherche_genre: f.recherche_genre,
-        telephone: f.telephone.trim(),
+        telephone: (f.indicatif + f.telephone.replace(/\D/g, '')),
         pays_residence: f.pays_residence,
         ville: f.ville || null,
         recherche_mode: f.recherche_mode,
@@ -189,7 +220,14 @@ export default function Inscription({ onComplete }) {
             <Input label="Email" type="email" value={f.email} onChange={v => set('email', v)} />
             <label className="fd-l">Mot de passe</label>
             <ChampMotDePasse value={f.password} onChange={v => set('password', v)} />
-            <Input label="Téléphone (obligatoire)" value={f.telephone} onChange={v => set('telephone', v)} placeholder="Ex : 6XXXXXXXX" />
+            <label className="fd-l">Téléphone (obligatoire)</label>
+            <div className="fd-telrow">
+              <select className="fd-in fd-indicatif" value={f.indicatif} onChange={e => set('indicatif', e.target.value)}>
+                {INDICATIFS.map(p => <option key={p.c} value={p.d}>{p.f} {p.d}</option>)}
+              </select>
+              <input className="fd-in" value={f.telephone} inputMode="numeric" placeholder="Numéro"
+                onChange={e => set('telephone', e.target.value)} />
+            </div>
             <DateNaissance value={f.date_naissance} onChange={v => set('date_naissance', v)} />
             <Choix label="Je suis" value={f.genre} onChange={v => set('genre', v)}
               options={[['homme', 'Un homme'], ['femme', 'Une femme']]} />
@@ -454,6 +492,9 @@ function Style() {
       .fd-eye svg{width:22px;height:22px}
       textarea.fd-in{resize:vertical}
       .fd-daterow{display:flex;gap:.5rem}
+      .fd-telrow{display:flex;gap:.5rem}
+      .fd-telrow .fd-indicatif{flex:0 0 auto;width:auto;min-width:112px;padding-left:.5rem;padding-right:.3rem}
+      .fd-telrow input{flex:1}
       .fd-daterow .fd-in{padding:.8rem .4rem}
       .fd-choix{display:flex;flex-wrap:wrap;gap:.5rem}
       .fd-opt{padding:.6rem 1rem;border:1.5px solid #E4D3D8;background:#fff;border-radius:99px;
