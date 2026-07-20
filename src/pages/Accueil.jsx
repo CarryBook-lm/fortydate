@@ -1201,12 +1201,41 @@ function Admin({ onVoir }) {
   const [paiements, setPaiements] = useState(null)
   const [recherche, setRecherche] = useState('')
   const [msg, setMsg] = useState('')
+  // Filtres de période (un par onglet), par défaut « Aujourd'hui »
+  const [perStats, setPerStats] = useState('jour')
+  const [perMembres, setPerMembres] = useState('jour')
+  const [perPaie, setPerPaie] = useState('jour')
+
+  // Début de période selon le choix
+  function debutPeriode(p) {
+    const d = new Date()
+    d.setHours(0, 0, 0, 0)
+    if (p === 'jour') return d
+    if (p === 'semaine') { const j = (d.getDay() + 6) % 7; d.setDate(d.getDate() - j); return d } // lundi
+    if (p === 'mois') { d.setDate(1); return d }
+    if (p === 'annee') { d.setMonth(0, 1); return d }
+    return null // tout
+  }
+  const dansPeriode = (dateStr, p) => {
+    if (p === 'tout') return true
+    if (!dateStr) return false
+    const deb = debutPeriode(p)
+    return new Date(dateStr) >= deb
+  }
+  const PERIODES = [['jour', "Aujourd'hui"], ['semaine', 'Semaine'], ['mois', 'Mois'], ['annee', 'Année'], ['tout', 'Tout']]
+  const FiltrePeriode = ({ val, set }) => (
+    <div className="fdh-periode">
+      {PERIODES.map(([k, lbl]) => (
+        <button key={k} className={'fdh-per' + (val === k ? ' on' : '')} onClick={() => set(k)}>{lbl}</button>
+      ))}
+    </div>
+  )
 
   useEffect(() => {
     ;(async () => {
       const { data: m } = await supabase.from('profiles')
-        .select('id, prenom, date_naissance, genre, pays_residence, ville, photo_principale, telephone, abo_statut, abo_expire_at, bloque')
-        .order('prenom', { ascending: true }).limit(500)
+        .select('id, prenom, date_naissance, genre, pays_residence, ville, photo_principale, telephone, abo_statut, abo_expire_at, bloque, cree_at')
+        .order('cree_at', { ascending: false }).limit(500)
       setMembres(m || [])
       // Paiements : via l'API admin (contourne la RLS, réservé à l'admin)
       try {
@@ -1223,15 +1252,16 @@ function Admin({ onVoir }) {
 
   const abonneActif = (x) => x?.abo_statut === 'actif' && x?.abo_expire_at && new Date(x.abo_expire_at) > new Date()
 
-  // Statistiques
+  // Statistiques (sur la période choisie pour l'onglet Stats)
   const stats = (() => {
-    const ms = membres || []
+    const ms = (membres || []).filter(x => dansPeriode(x.cree_at, perStats))
+    const ps = (paiements || []).filter(x => dansPeriode(x.cree_at || x.created_at, perStats))
     const total = ms.length
     const abonnes = ms.filter(abonneActif).length
     const hommes = ms.filter(x => x.genre === 'homme').length
     const femmes = ms.filter(x => x.genre === 'femme').length
     const bloques = ms.filter(x => x.bloque).length
-    const revenus = (paiements || []).reduce((s, p) => s + (Number(p.montant) || 0), 0)
+    const revenus = ps.reduce((s, p) => s + (Number(p.montant) || 0), 0)
     return { total, abonnes, hommes, femmes, bloques, revenus }
   })()
 
@@ -1252,12 +1282,14 @@ function Admin({ onVoir }) {
   }
 
   const membresFiltres = (membres || []).filter(m => {
+    if (!dansPeriode(m.cree_at, perMembres)) return false
     if (!recherche.trim()) return true
     const q = recherche.toLowerCase()
     return (m.prenom || '').toLowerCase().includes(q)
       || (m.ville || '').toLowerCase().includes(q)
       || (m.telephone || '').includes(q)
   })
+  const paiementsFiltres = (paiements || []).filter(p => dansPeriode(p.cree_at || p.created_at, perPaie))
 
   if (membres === null) return <div className="fdh-msg">Chargement…</div>
 
@@ -1272,18 +1304,22 @@ function Admin({ onVoir }) {
       {msg && <div className="fdh-abo-msg err">{msg}</div>}
 
       {vue === 'stats' && (
-        <div className="fdh-stats">
+        <div>
+          <FiltrePeriode val={perStats} set={setPerStats} />
+          <div className="fdh-stats">
           <div className="fdh-stat"><div className="fdh-stat-n">{stats.total}</div><div className="fdh-stat-l">Membres</div></div>
           <div className="fdh-stat on"><div className="fdh-stat-n">{stats.abonnes}</div><div className="fdh-stat-l">Abonnés Sérénité</div></div>
           <div className="fdh-stat"><div className="fdh-stat-n">{stats.hommes}</div><div className="fdh-stat-l">Hommes</div></div>
           <div className="fdh-stat"><div className="fdh-stat-n">{stats.femmes}</div><div className="fdh-stat-l">Femmes</div></div>
           <div className="fdh-stat"><div className="fdh-stat-n">{stats.bloques}</div><div className="fdh-stat-l">Bloqués</div></div>
           <div className="fdh-stat or"><div className="fdh-stat-n">{stats.revenus.toLocaleString('fr-FR')} F</div><div className="fdh-stat-l">Revenus encaissés</div></div>
+          </div>
         </div>
       )}
 
       {vue === 'membres' && (
         <div>
+          <FiltrePeriode val={perMembres} set={setPerMembres} />
           <input className="fdh-ein" style={{ marginBottom: '.8rem' }} value={recherche} placeholder="🔎 Chercher (prénom, ville, téléphone)…" onChange={e => setRecherche(e.target.value)} />
           <div className="fdh-adm-liste">
             {membresFiltres.map(m => (
@@ -1305,17 +1341,20 @@ function Admin({ onVoir }) {
       )}
 
       {vue === 'paiements' && (
-        <div className="fdh-adm-liste">
-          {(paiements || []).map((p, k) => (
-            <div key={p.id || k} className="fdh-adm-paie">
-              <div>
-                <div className="fdh-adm-nom">{(Number(p.montant) || 0).toLocaleString('fr-FR')} {p.devise || 'F'}</div>
-                <div className="fdh-adm-sous">{p.source || '—'} · {p.reference || ''}</div>
+        <div>
+          <FiltrePeriode val={perPaie} set={setPerPaie} />
+          <div className="fdh-adm-liste">
+            {paiementsFiltres.map((p, k) => (
+              <div key={p.id || k} className="fdh-adm-paie">
+                <div>
+                  <div className="fdh-adm-nom">{(Number(p.montant) || 0).toLocaleString('fr-FR')} {p.devise || 'F'}</div>
+                  <div className="fdh-adm-sous">{p.source || '—'} · {p.reference || ''}</div>
+                </div>
+                <div className="fdh-adm-date">{(p.cree_at || p.created_at) ? new Date(p.cree_at || p.created_at).toLocaleDateString('fr-FR') : ''}</div>
               </div>
-              <div className="fdh-adm-date">{(p.cree_at || p.created_at) ? new Date(p.cree_at || p.created_at).toLocaleDateString('fr-FR') : ''}</div>
-            </div>
-          ))}
-          {(paiements || []).length === 0 && <p className="fdh-msg">Aucun paiement enregistré.</p>}
+            ))}
+            {paiementsFiltres.length === 0 && <p className="fdh-msg">Aucun paiement sur cette période.</p>}
+          </div>
         </div>
       )}
     </div>
@@ -1406,7 +1445,7 @@ export default function Accueil({ onDeconnexion }) {
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Abonnement : Passez à Sérénité</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #E</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #F</div>
           </div>
         </div>
       )}
@@ -1597,6 +1636,9 @@ function Style() {
       .fdh-sous span{background:rgba(255,255,255,.3);color:inherit;font-size:.75rem;padding:.05rem .45rem;border-radius:99px}
       .fdh-sous:not(.on) span{background:#D62A5E;color:#fff}
       .fdh-admin-titre{font-size:1.3rem;color:#4A1546;margin:.2rem 0 1rem}
+      .fdh-periode{display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:1rem}
+      .fdh-per{background:#fff;border:1.5px solid #E4D3D8;border-radius:99px;padding:.4rem .8rem;font-size:.82rem;font-weight:700;color:#7A6B74;cursor:pointer}
+      .fdh-per.on{background:#4A1546;border-color:#4A1546;color:#fff}
       .fdh-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
       .fdh-stat{background:#fff;border:1.5px solid #EEE0E4;border-radius:14px;padding:1rem;text-align:center}
       .fdh-stat.on{background:#FBE9EF;border-color:#F5C2D3}
