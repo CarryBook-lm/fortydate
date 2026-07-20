@@ -159,9 +159,9 @@ const L_TYPEREL = { serieuse: 'Relation sérieuse et durable', mariage: 'En vue 
 
 /* ---------------- Fiche profil détaillée (album + infos) ---------------- */
 function FicheProfil({ profil, onFermer }) {
-  const album = (Array.isArray(profil.photos) && profil.photos.length)
-    ? profil.photos
-    : (profil.photo_principale ? [profil.photo_principale] : [])
+  const principale = profil.photo_principale || null
+  const autres = (Array.isArray(profil.photos) ? profil.photos : []).filter(u => u && u !== principale)
+  const album = principale ? [principale, ...autres] : autres
   const [actuelle, setActuelle] = useState(album[0] || null)
   const age = ageDepuis(profil.date_naissance)
   const chips = [
