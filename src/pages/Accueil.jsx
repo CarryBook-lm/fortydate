@@ -1107,10 +1107,11 @@ function Abonnement({ moi, onFini, onClose }) {
                 </button>
               ))}
             </div>
-            <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1.2rem' }} onClick={() => { setMsg(''); setEtape('methode') }}>
+            <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1.2rem' }}
+              onClick={() => { setMsg(''); estCameroun ? setEtape('methode') : payerChariow() }}>
               Payer {plan.prix.toLocaleString('fr-FR')} FCFA
             </button>
-            <p className="fdh-abo-note">Paiement sécurisé · Mobile Money (MTN & Orange){estCameroun ? '' : ' · Carte'}</p>
+            <p className="fdh-abo-note">Paiement sécurisé · {estCameroun ? 'Mobile Money (MTN & Orange)' : 'Carte / Mobile Money'}</p>
           </>
         )}
       </div>
