@@ -4,17 +4,14 @@
 //  Écrans 4-6 = enrichissement (l'utilisateur peut "Passer").
 //
 //  Prérequis Supabase :
-//   • Authentication → Email → DÉSACTIVER "Confirm email"
-//     (sinon pas de session immédiate = insertion profil bloquée par RLS)
-//   • Storage → créer un bucket PUBLIC nommé "avatars" (pour les photos)
+//   • Authentication → Providers → Email → DÉSACTIVER "Confirm email"
+//   • Storage → bucket PUBLIC nommé "avatars"
 //
 //  Placement : src/pages/Inscription.jsx
-//  Import supabase depuis src/lib/supabase.js
 // ============================================================
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-// ---------- Données de référence ----------
 const PAYS = [
   { c: 'CM', n: 'Cameroun' }, { c: 'CI', n: "Côte d'Ivoire" }, { c: 'SN', n: 'Sénégal' },
   { c: 'BJ', n: 'Bénin' }, { c: 'BF', n: 'Burkina Faso' }, { c: 'ML', n: 'Mali' },
@@ -27,10 +24,10 @@ const PAYS = [
   { c: 'IT', n: 'Italie' }, { c: 'ES', n: 'Espagne' }, { c: 'PT', n: 'Portugal' },
   { c: 'XX', n: 'Autre pays' },
 ]
-
 const VALEURS = ['Honnêteté', 'Foi / spiritualité', 'Famille', 'Ambition', 'Tendresse', 'Communication', 'Stabilité', 'Humour']
 const INTERETS = ['Voyages', 'Cuisine', 'Foi', 'Musique', 'Sport', 'Lecture', 'Cinéma', 'Nature', 'Danse', 'Art']
 const LANGUES = ['Français', 'Anglais', 'Arabe', 'Espagnol', 'Portugais', 'Langue locale']
+const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 
 function devisePourPays(c) {
   if (['CM', 'GA', 'TD', 'CF', 'CG', 'GQ'].includes(c)) return 'XAF'
@@ -42,7 +39,6 @@ function devisePourPays(c) {
   if (c === 'GB') return 'GBP'
   return 'XOF'
 }
-
 function ageDepuis(dateStr) {
   if (!dateStr) return 0
   const d = new Date(dateStr), t = new Date()
@@ -51,12 +47,65 @@ function ageDepuis(dateStr) {
   if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--
   return a
 }
+function traduireErreur(e) {
+  const m = (e?.message || e?.error_description || e?.hint || e?.details || (typeof e === 'string' ? e : '') || '').toString()
+  if (m === 'CONFIRM_EMAIL')
+    return "Ton compte est créé mais Supabase attend une confirmation par email. Va dans Supabase → Authentication → Providers → Email et DÉSACTIVE « Confirm email », puis réessaie."
+  if (m.toLowerCase().includes('row-level security') || m.toLowerCase().includes('violates'))
+    return "Insertion bloquée par la sécurité. Désactive « Confirm email » dans Supabase (Authentication → Providers → Email), puis réessaie."
+  if (m.toLowerCase().includes('already registered') || m.toLowerCase().includes('already been registered'))
+    return "Cet email a déjà un compte. Utilise un autre email."
+  if (m.toLowerCase().includes('duplicate key')) return "Un profil existe déjà pour ce compte."
+  if (m.toLowerCase().includes('40 ans')) return "FortyDate est réservé aux personnes de 40 ans et plus."
+  if (m.toLowerCase().includes('password')) return "Mot de passe trop court (6 caractères minimum)."
+  if (m.toLowerCase().includes('failed to fetch') || m.toLowerCase().includes('networkerror'))
+    return "Connexion à Supabase impossible. Vérifie tes clés."
+  return m || "Erreur inconnue. Réessaie."
+}
+
+// ---------- Sélecteur Jour / Mois / Année ----------
+function DateNaissance({ value, onChange }) {
+  const dep = (value || '').split('-')
+  const [a, setA] = useState(dep[0] || '')
+  const [m, setM] = useState(dep[1] || '')
+  const [j, setJ] = useState(dep[2] || '')
+  const anneeMax = new Date().getFullYear() - 40
+  const annees = []
+  for (let y = anneeMax; y >= 1930; y--) annees.push(y)
+  const jours = []
+  for (let d = 1; d <= 31; d++) jours.push(String(d).padStart(2, '0'))
+
+  function maj(nj, nm, na) {
+    setJ(nj); setM(nm); setA(na)
+    onChange(nj && nm && na ? `${na}-${nm}-${nj}` : '')
+  }
+  return (
+    <>
+      <label className="fd-l">Date de naissance</label>
+      <div className="fd-daterow">
+        <select className="fd-in" value={j} onChange={e => maj(e.target.value, m, a)}>
+          <option value="">Jour</option>
+          {jours.map(d => <option key={d} value={d}>{d}</option>)}
+        </select>
+        <select className="fd-in" value={m} onChange={e => maj(j, e.target.value, a)}>
+          <option value="">Mois</option>
+          {MOIS.map((nom, k) => <option key={nom} value={String(k + 1).padStart(2, '0')}>{nom}</option>)}
+        </select>
+        <select className="fd-in" value={a} onChange={e => maj(j, m, e.target.value)}>
+          <option value="">Année</option>
+          {annees.map(y => <option key={y} value={y}>{y}</option>)}
+        </select>
+      </div>
+    </>
+  )
+}
 
 // ============================================================
 export default function Inscription({ onComplete }) {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
+  const [voirMdp, setVoirMdp] = useState(false)
   const [f, setF] = useState({
     email: '', password: '', telephone: '', prenom: '', date_naissance: '',
     genre: '', recherche_genre: '',
@@ -73,14 +122,13 @@ export default function Inscription({ onComplete }) {
     return { ...p, [k]: arr }
   })
 
-  // ---------- Validation par écran ----------
   function valider(n) {
     setErr('')
     if (n === 1) {
       if (!f.prenom.trim()) return 'Ton prénom est requis.'
       if (!/^[^@]+@[^@]+\.[^@]+$/.test(f.email)) return 'Email invalide.'
       if (f.password.length < 6) return 'Mot de passe : 6 caractères minimum.'
-      if (!f.date_naissance) return 'Ta date de naissance est requise.'
+      if (!f.date_naissance) return 'Choisis ta date de naissance (jour, mois et année).'
       if (ageDepuis(f.date_naissance) < 40) return 'FortyDate est réservé aux personnes de 40 ans et plus.'
       if (!f.genre) return 'Indique si tu es un homme ou une femme.'
       if (!f.recherche_genre) return 'Indique qui tu recherches.'
@@ -96,16 +144,12 @@ export default function Inscription({ onComplete }) {
     return ''
   }
 
-  // ---------- Création du compte (fin écran 3) ----------
   async function creerCompte() {
     setLoading(true); setErr('')
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: f.email, password: f.password,
-      })
+      const { data, error } = await supabase.auth.signUp({ email: f.email, password: f.password })
       if (error) throw error
       if (!data.user) throw new Error("Compte non créé.")
-      // Pas de session = email non confirmé = insertion profil impossible (RLS)
       if (!data.session) throw new Error('CONFIRM_EMAIL')
 
       const { error: e2 } = await supabase.from('profiles').insert({
@@ -125,7 +169,7 @@ export default function Inscription({ onComplete }) {
         profession: f.profession || null,
       })
       if (e2) throw e2
-      setStep(4) // passe à l'enrichissement
+      setStep(4)
     } catch (e) {
       setErr(traduireErreur(e))
     } finally {
@@ -133,7 +177,6 @@ export default function Inscription({ onComplete }) {
     }
   }
 
-  // ---------- Mise à jour du profil (écrans 4-6) ----------
   async function majProfil(champs, suivant) {
     setLoading(true); setErr('')
     try {
@@ -172,7 +215,6 @@ export default function Inscription({ onComplete }) {
   const suivant = () => { const e = valider(step); if (e) return setErr(e); setStep(step + 1) }
   const precedent = () => { setErr(''); setStep(step - 1) }
 
-  // ============================================================
   return (
     <div className="fd-inscription">
       <Style />
@@ -180,15 +222,18 @@ export default function Inscription({ onComplete }) {
         <div className="fd-brand"><span className="fd-f">Forty</span><span className="fd-d">Date</span></div>
         <Progress step={step} />
 
-        {/* ---------- ÉCRAN 1 ---------- */}
         {step === 1 && (
           <Ecran titre="Créons ton compte" sous="Réservé aux 40 ans et plus.">
             <Input label="Prénom" value={f.prenom} onChange={v => set('prenom', v)} />
             <Input label="Email" type="email" value={f.email} onChange={v => set('email', v)} />
             <label className="fd-l">Mot de passe</label>
-            <ChampMotDePasse value={f.password} onChange={v => set('password', v)} />
+            <div className="fd-pass">
+              <input className="fd-in" type={voirMdp ? 'text' : 'password'} value={f.password}
+                onChange={e => set('password', e.target.value)} placeholder="6 caractères min." />
+              <button type="button" className="fd-eye" onClick={() => setVoirMdp(v => !v)}>{voirMdp ? '🙈' : '👁️'}</button>
+            </div>
             <Input label="Téléphone (WhatsApp)" value={f.telephone} onChange={v => set('telephone', v)} placeholder="+237..." />
-            <Input label="Date de naissance" type="date" value={f.date_naissance} onChange={v => set('date_naissance', v)} />
+            <DateNaissance value={f.date_naissance} onChange={v => set('date_naissance', v)} />
             <Choix label="Je suis" value={f.genre} onChange={v => set('genre', v)}
               options={[['homme', 'Un homme'], ['femme', 'Une femme']]} />
             <Choix label="Je recherche" value={f.recherche_genre} onChange={v => set('recherche_genre', v)}
@@ -196,7 +241,6 @@ export default function Inscription({ onComplete }) {
           </Ecran>
         )}
 
-        {/* ---------- ÉCRAN 2 ---------- */}
         {step === 2 && (
           <Ecran titre="Où veux-tu rencontrer ?" sous="Local par défaut, mondial si tu le choisis.">
             <label className="fd-l">Pays de résidence</label>
@@ -219,7 +263,6 @@ export default function Inscription({ onComplete }) {
           </Ecran>
         )}
 
-        {/* ---------- ÉCRAN 3 ---------- */}
         {step === 3 && (
           <Ecran titre="Ta situation" sous="Ça nous aide à te présenter les bonnes personnes.">
             <Choix label="Situation actuelle" value={f.situation} onChange={v => set('situation', v)}
@@ -230,7 +273,6 @@ export default function Inscription({ onComplete }) {
           </Ecran>
         )}
 
-        {/* ---------- ÉCRAN 4 ---------- */}
         {step === 4 && (
           <Ecran titre="Ce que tu cherches" sous="Enrichis ton profil (tu peux passer).">
             <Choix label="Type de relation" value={f.type_relation} onChange={v => set('type_relation', v)}
@@ -246,7 +288,6 @@ export default function Inscription({ onComplete }) {
           </Ecran>
         )}
 
-        {/* ---------- ÉCRAN 5 ---------- */}
         {step === 5 && (
           <Ecran titre="Qui es-tu ?" sous="Une photo et quelques mots vrais.">
             <label className="fd-l">Photo de profil</label>
@@ -276,7 +317,6 @@ export default function Inscription({ onComplete }) {
           </Ecran>
         )}
 
-        {/* ---------- ÉCRAN 6 ---------- */}
         {step === 6 && (
           <Ecran titre="Obtiens ton badge vérifié" sous="Un profil vérifié inspire confiance et reçoit plus de messages.">
             <p className="fd-info">Prends un selfie pour confirmer que c'est bien toi. Notre équipe le compare à ta photo de profil. Tu peux aussi le faire plus tard depuis ton espace.</p>
@@ -287,7 +327,6 @@ export default function Inscription({ onComplete }) {
 
         {err ? <div className="fd-err">{String(err)}</div> : null}
 
-        {/* ---------- NAVIGATION ---------- */}
         <div className="fd-nav">
           {step > 1 && step < 4 && <button className="fd-btn ghost" onClick={precedent} disabled={loading}>Retour</button>}
           {step >= 4 && <button className="fd-btn ghost" onClick={step < 6 ? () => setStep(step + 1) : terminer} disabled={loading}>Passer</button>}
@@ -303,50 +342,6 @@ export default function Inscription({ onComplete }) {
   )
 }
 
-// ---------- Erreurs Supabase → français lisible ----------
-function traduireErreur(e) {
-  const m = (e?.message || e?.error_description || e?.hint || e?.details || (typeof e === 'string' ? e : '') || '').toString()
-  if (m === 'CONFIRM_EMAIL')
-    return "Ton compte est créé mais Supabase attend une confirmation par email. Va dans Supabase → Authentication → Providers → Email et DÉSACTIVE « Confirm email », puis réessaie."
-  if (m.toLowerCase().includes('row-level security') || m.toLowerCase().includes('violates'))
-    return "Insertion bloquée par la sécurité. Désactive « Confirm email » dans Supabase (Authentication → Providers → Email), puis réessaie."
-  if (m.toLowerCase().includes('already registered') || m.toLowerCase().includes('already been registered'))
-    return "Cet email a déjà un compte. Utilise un autre email pour tester."
-  if (m.toLowerCase().includes('duplicate key'))
-    return "Un profil existe déjà pour ce compte."
-  if (m.toLowerCase().includes('40 ans'))
-    return "FortyDate est réservé aux personnes de 40 ans et plus."
-  if (m.toLowerCase().includes('password'))
-    return "Mot de passe trop court (6 caractères minimum)."
-  if (m.toLowerCase().includes('failed to fetch') || m.toLowerCase().includes('networkerror'))
-    return "Connexion à Supabase impossible. Vérifie tes clés dans .env.local (URL et anon key)."
-  return m || "Erreur inconnue. Réessaie."
-}
-
-// ---------- Sous-composants ----------
-function ChampMotDePasse({ value, onChange, placeholder = 'Mot de passe' }) {
-  const [visible, setVisible] = useState(false)
-  return (
-    <div className="fd-pass">
-      <input className="fd-in" type={visible ? 'text' : 'password'} value={value}
-        placeholder={placeholder} onChange={e => onChange(e.target.value)} />
-      <button type="button" className="fd-eye" onClick={() => setVisible(v => !v)}
-        aria-label={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}>
-        {visible ? (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M17.9 17.9A10.5 10.5 0 0 1 12 20C5 20 1 12 1 12a19 19 0 0 1 5.1-5.9M9.9 4.2A10.5 10.5 0 0 1 12 4c7 0 11 8 11 8a19 19 0 0 1-2.2 3.2M1 1l22 22" />
-            <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
-          </svg>
-        ) : (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-        )}
-      </button>
-    </div>
-  )
-}
 function Ecran({ titre, sous, children }) {
   return (
     <div className="fd-ecran">
@@ -388,7 +383,6 @@ function Progress({ step }) {
   )
 }
 
-// ---------- Styles (FortyDate) ----------
 function Style() {
   return (
     <style>{`
@@ -409,13 +403,12 @@ function Style() {
       .fd-in{width:100%;padding:.8rem .9rem;border:1.5px solid #E4D3D8;border-radius:12px;
         font-size:1rem;background:#fff;box-sizing:border-box;color:#3A0F38}
       .fd-in:focus{outline:none;border-color:#D62A5E}
-      .fd-pass{position:relative}
-      .fd-pass .fd-in{padding-right:3rem}
-      .fd-eye{position:absolute;right:.6rem;top:50%;transform:translateY(-50%);
-        background:none;border:0;cursor:pointer;color:#7A6B74;padding:.3rem;display:grid;place-items:center}
-      .fd-eye:hover{color:#D62A5E}
-      .fd-eye svg{width:22px;height:22px}
       textarea.fd-in{resize:vertical}
+      .fd-daterow{display:flex;gap:.5rem}
+      .fd-daterow .fd-in{padding:.8rem .4rem}
+      .fd-pass{position:relative}
+      .fd-pass .fd-in{padding-right:2.8rem}
+      .fd-eye{position:absolute;right:.6rem;top:50%;transform:translateY(-50%);background:none;border:0;font-size:1.2rem;cursor:pointer}
       .fd-choix{display:flex;flex-wrap:wrap;gap:.5rem}
       .fd-opt{padding:.6rem 1rem;border:1.5px solid #E4D3D8;background:#fff;border-radius:99px;
         font-size:.92rem;cursor:pointer;color:#4A1546;transition:.15s}
@@ -427,7 +420,7 @@ function Style() {
       .fd-avatar{width:90px;height:90px;object-fit:cover;border-radius:50%;margin:.4rem 0;display:block}
       .fd-info{font-size:.92rem;color:#5c4f57;line-height:1.5;background:#F3E7EA;padding:1rem;border-radius:12px}
       .fd-err{background:#fdeaea;color:#b21f4e;padding:.7rem .9rem;border-radius:10px;
-        font-size:.88rem;margin-top:1rem}
+        font-size:.88rem;margin-top:1rem;line-height:1.4}
       .fd-nav{display:flex;gap:.7rem;margin-top:1.6rem}
       .fd-btn{flex:1;padding:.9rem;border:0;border-radius:12px;background:#D62A5E;color:#fff;
         font-size:1rem;font-weight:800;cursor:pointer;transition:.2s}
