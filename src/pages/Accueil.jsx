@@ -146,7 +146,7 @@ function estAbonneP(p) {
 function Badge({ p, size = 18 }) {
   if (!estAbonneP(p)) return null
   return (
-    <svg className="fdh-badge" width={size} height={size} viewBox="0 0 24 24" aria-label="Membre Sérénité" style={{ verticalAlign: 'middle', marginLeft: 4, flexShrink: 0 }}>
+    <svg className="fdh-badge" width={size} height={size} viewBox="0 0 24 24" aria-label="Membre Sérénité" style={{ verticalAlign: 'middle', marginLeft: 4, flexShrink: 0, minWidth: size, display: 'inline-block' }}>
       <path fill="#D62A5E" d="M12 1.5l2.3 1.7 2.85-.15 1 2.68 2.5 1.37-.62 2.79 1.72 2.28-1.72 2.28.62 2.79-2.5 1.37-1 2.68-2.85-.15L12 22.5l-2.3-1.7-2.85.15-1-2.68-2.5-1.37.62-2.79L2.25 12l1.72-2.28-.62-2.79 2.5-1.37 1-2.68 2.85.15L12 1.5z"/>
       <path fill="#fff" d="M10.6 15.2l-3-3 1.4-1.4 1.6 1.6 3.9-3.9 1.4 1.4-5.3 5.3z"/>
     </svg>
@@ -1516,7 +1516,8 @@ function Style() {
 
       /* Fiche profil */
       .fdh-fiche{position:fixed;inset:0;max-width:520px;margin:0 auto;background:#FBF4F5;z-index:70;display:flex;flex-direction:column}
-      .fdh-fiche-head{display:flex;align-items:center;gap:.5rem;padding:.7rem 1rem;background:#fff;border-bottom:1px solid #EEE0E4}
+      .fdh-fiche-head{display:flex;align-items:center;gap:.5rem;padding:.7rem 1rem;padding-top:calc(.7rem + env(safe-area-inset-top));background:#fff;border-bottom:1px solid #EEE0E4}
+      .fdh-badge{flex:0 0 auto;aspect-ratio:1/1}
       .fdh-fiche-scroll{flex:1;overflow-y:auto}
       .fdh-fiche-photo{width:100%;background:#EDE0E4}
       .fdh-fiche-photo img{width:100%;max-height:420px;object-fit:cover;display:block}
