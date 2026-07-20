@@ -1190,7 +1190,10 @@ function MotDePasse({ onClose }) {
 
 /* ============================================================ */
 export default function Accueil({ onDeconnexion }) {
-  const [onglet, setOnglet] = useState('proximite')
+  const [onglet, setOnglet] = useState(() => {
+    try { return localStorage.getItem('fd_onglet') || 'proximite' } catch (_) { return 'proximite' }
+  })
+  useEffect(() => { try { localStorage.setItem('fd_onglet', onglet) } catch (_) {} }, [onglet])
   const [moi, setMoi] = useState(null)
   const [mesReponses, setMesReponses] = useState(null) // réponses affinités
   const [conversationAvec, setConversationAvec] = useState(null)
