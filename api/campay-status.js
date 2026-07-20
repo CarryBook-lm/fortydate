@@ -10,7 +10,12 @@ export default async function handler(req, res) {
     if (t.status === 'SUCCESSFUL') {
       await activerAbonnement(t)               // idempotent
     }
-    return res.status(200).json({ status: t.status, amount: t.amount })
+    return res.status(200).json({
+      status: t.status,
+      amount: t.amount,
+      reason: t.reason || t.message || t.operator_reference || null,
+      operator: t.operator || null
+    })
   } catch (e) {
     return res.status(500).json({ error: 'Erreur serveur', detail: String(e) })
   }

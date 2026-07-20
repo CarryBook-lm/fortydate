@@ -822,7 +822,7 @@ function Abonnement({ moi, onFini, onClose }) {
           const s = await fetch('/api/campay-status?reference=' + ref)
           const sd = await s.json()
           if (sd.status === 'SUCCESSFUL') { clearInterval(timer); setEtat('ok'); onFini && onFini() }
-          else if (sd.status === 'FAILED') { clearInterval(timer); setEtat('echec'); setMsg('Le paiement a échoué ou a été annulé.') }
+          else if (sd.status === 'FAILED') { clearInterval(timer); setEtat('echec'); setMsg('Paiement échoué' + (sd.reason ? ' : ' + sd.reason : ' ou annulé.')) }
         } catch (_) {}
         if (n > 30) { clearInterval(timer); setEtat(e => e === 'ok' ? e : 'echec'); setMsg("Délai dépassé. Si tu as bien payé, ton abonnement s'activera sous peu.") }
       }, 4000)

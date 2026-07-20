@@ -26,7 +26,7 @@ export default async function handler(req, res) {
     })
     const data = await r.json()
     if (!r.ok || !data.reference)
-      return res.status(400).json({ error: data.message || 'Paiement refusé.', detail: data })
+      return res.status(400).json({ error: (data.message || data.detail || 'Paiement refusé.') + '', detail: data })
 
     return res.status(200).json({ reference: data.reference, ussd: data.ussd_code, operator: data.operator })
   } catch (e) {
