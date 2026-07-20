@@ -1269,6 +1269,7 @@ export default function Accueil({ onDeconnexion }) {
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Abonnement : Passez à Sérénité</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #A</div>
           </div>
         </div>
       )}
@@ -1305,7 +1306,8 @@ function Style() {
   return (
     <style>{`
       .fdh-app{min-height:100vh;background:#FBF4F5;font-family:system-ui,'Segoe UI',sans-serif;
-        color:#3A0F38;display:flex;flex-direction:column;max-width:520px;margin:0 auto;position:relative}
+        color:#3A0F38;display:flex;flex-direction:column;width:100%;max-width:480px;margin:0 auto;position:relative}
+      .fdh-main{flex:1;width:100%;max-width:480px;margin:0 auto;box-sizing:border-box;padding:1rem 1rem calc(72px + 1rem + env(safe-area-inset-bottom));overflow-y:auto}
       .fdh-header{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #EEE0E4;
         padding:.9rem 1.1rem;padding-top:calc(.9rem + env(safe-area-inset-top));display:flex;align-items:center;gap:.7rem}
       .fdh-burger{background:none;border:0;font-size:1.4rem;cursor:pointer;color:#4A1546;line-height:1}
@@ -1313,7 +1315,6 @@ function Style() {
       .fdh-logo .f{color:#4A1546}.fdh-logo .d{color:#D62A5E}
       .fdh-logo-img{height:46px;width:auto;display:block;object-fit:contain}
       .fdh-titre-page{font-size:.95rem;color:#7A6B74;font-weight:700;margin-left:auto}
-      .fdh-main{flex:1;padding:1rem 1rem calc(72px + 1rem + env(safe-area-inset-bottom));overflow-y:auto}
 
       /* Drawer */
       .fdh-drawer-fond{position:fixed;inset:0;background:rgba(36,10,42,.5);z-index:60}
