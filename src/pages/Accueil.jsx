@@ -1208,8 +1208,16 @@ function Admin({ onVoir }) {
         .select('id, prenom, date_naissance, genre, pays_residence, ville, photo_principale, telephone, abo_statut, abo_expire_at, bloque')
         .order('prenom', { ascending: true }).limit(500)
       setMembres(m || [])
-      const { data: p } = await supabase.from('paiements').select('*').limit(300)
-      setPaiements(p || [])
+      // Paiements : via l'API admin (contourne la RLS, réservé à l'admin)
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const r = await fetch('/api/admin-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (session?.access_token || '') },
+        })
+        const d = await r.json()
+        setPaiements(r.ok ? (d.paiements || []) : [])
+      } catch (_) { setPaiements([]) }
     })()
   }, [])
 
@@ -1398,7 +1406,7 @@ export default function Accueil({ onDeconnexion }) {
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Abonnement : Passez à Sérénité</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #D</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #E</div>
           </div>
         </div>
       )}
