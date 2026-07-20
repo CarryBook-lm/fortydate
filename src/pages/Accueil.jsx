@@ -347,7 +347,7 @@ function Proximite({ moi, onVoir }) {
         <button key={p.id} className="fdh-carte" onClick={() => onVoir(p.id)}>
           <div className="fdh-carte-photo"><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></div>
           <div className="fdh-nom"><span className="fdh-point" />
-            {p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} /></div>
+            <span className="fdh-nom-txt">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} /></span></div>
         </button>
       ))}
     </div>
@@ -1554,7 +1554,7 @@ export default function Accueil({ onDeconnexion }) {
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #I</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #J</div>
           </div>
         </div>
       )}
@@ -1639,6 +1639,7 @@ function Style() {
       .fdh-vide{display:grid;place-items:center;font-size:2.4rem;font-weight:800;color:#fff;background:linear-gradient(150deg,#7A2233,#D62A5E)}
       .fdh-nom{padding:.5rem .6rem;font-size:.82rem;font-weight:700;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;min-height:2.3rem}
       .fdh-point{width:8px;height:8px;border-radius:50%;background:#3ecf6b;flex:0 0 auto}
+      .fdh-nom-txt{display:inline-flex;align-items:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
       .fdh-msg{text-align:center;color:#7A6B74;padding:2rem}
       .fdh-vide-etat{text-align:center;padding:3rem 1.5rem;color:#7A6B74}
