@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
+import Landing from './pages/Landing'
 import Inscription from './pages/Inscription'
 import Connexion from './pages/Connexion'
 import Accueil from './pages/Accueil'
@@ -68,7 +69,8 @@ function BanniereInstall() {
 export default function App() {
   const [session, setSession] = useState(null)
   const [checking, setChecking] = useState(true)
-  const [flow, setFlow] = useState('auto')
+  // Page publique affichée quand personne n'est connecté : 'landing' | 'connexion' | 'inscription'
+  const [page, setPage] = useState('landing')
 
   useEffect(() => {
     // enregistre le service worker (nécessaire pour l'installation)
@@ -89,22 +91,44 @@ export default function App() {
   }, [])
 
   let contenu
-  if (checking)
+  if (checking) {
     contenu = (
       <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center',
         background: '#4A1546', color: '#fff', fontFamily: 'system-ui' }}>Chargement…</div>
     )
-  else if (flow === 'inscription')
-    contenu = <Inscription onComplete={() => setFlow('auto')} />
-  else if (session)
-    contenu = <Accueil onDeconnexion={() => supabase.auth.signOut()} />
-  else
+  }
+  // Pendant l'inscription, on reste sur l'inscription même si le compte vient
+  // d'être créé (écrans 4-6), jusqu'à « Terminer ». (Vérifié AVANT session.)
+  else if (page === 'inscription') {
+    contenu = <Inscription onComplete={() => setPage('accueil')} />
+  }
+  // Connecté -> l'application
+  else if (session) {
+    contenu = (
+      <Accueil onDeconnexion={async () => {
+        await supabase.auth.signOut()   // -> session repasse à null (listener)
+        setPage('landing')              // -> retour à la page d'accueil publique
+      }} />
+    )
+  }
+  // Non connecté -> connexion
+  else if (page === 'connexion') {
     contenu = (
       <Connexion
-        onConnecte={() => {}}
-        onVersInscription={() => setFlow('inscription')}
+        onConnecte={() => { /* la session est gérée par le listener -> Accueil */ }}
+        onVersInscription={() => setPage('inscription')}
       />
     )
+  }
+  // Non connecté -> page d'accueil publique (landing)
+  else {
+    contenu = (
+      <Landing
+        onInscription={() => setPage('inscription')}
+        onConnexion={() => setPage('connexion')}
+      />
+    )
+  }
 
   return (
     <>
