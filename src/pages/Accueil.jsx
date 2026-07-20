@@ -1443,9 +1443,10 @@ export default function Accueil({ onDeconnexion }) {
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('profil')}>👤 Mon profil</button>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('questionnaire')}>📝 Questionnaire d'affinités</button>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Abonnement : Passez à Sérénité</button>
+            {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #F</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #G</div>
           </div>
         </div>
       )}
