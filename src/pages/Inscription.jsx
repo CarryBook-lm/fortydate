@@ -208,7 +208,7 @@ export default function Inscription({ onComplete }) {
               {PAYS.map(p => <option key={p.c} value={p.c}>{p.n}</option>)}
             </select>
 
-            <label className="fd-l">Téléphone (WhatsApp)</label>
+            <label className="fd-l">Numéro de téléphone</label>
             <div style={{ display: 'flex', gap: '.5rem' }}>
               <div style={{
                 flex: '0 0 auto', minWidth: '66px', display: 'flex', alignItems: 'center', justifyContent: 'center',
