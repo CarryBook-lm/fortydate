@@ -28,41 +28,18 @@ const PAYS = [
   { c: 'XX', n: 'Autre pays' },
 ]
 
+// Indicatif téléphonique par pays (rempli automatiquement)
+const INDICATIFS = {
+  CM: '+237', CI: '+225', SN: '+221', BJ: '+229', BF: '+226', ML: '+223',
+  TG: '+228', NE: '+227', GA: '+241', CG: '+242', CD: '+243', GN: '+224',
+  TD: '+235', CF: '+236', MA: '+212', DZ: '+213', TN: '+216', FR: '+33',
+  BE: '+32', CH: '+41', CA: '+1', US: '+1', GB: '+44', DE: '+49',
+  IT: '+39', ES: '+34', PT: '+351', XX: '',
+}
+
 const VALEURS = ['Honnêteté', 'Foi / spiritualité', 'Famille', 'Ambition', 'Tendresse', 'Communication', 'Stabilité', 'Humour']
 const INTERETS = ['Voyages', 'Cuisine', 'Foi', 'Musique', 'Sport', 'Lecture', 'Cinéma', 'Nature', 'Danse', 'Art']
 const LANGUES = ['Français', 'Anglais', 'Arabe', 'Espagnol', 'Portugais', 'Langue locale']
-const MOIS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
-
-// Indicatif téléphonique + drapeau par pays (ordre = liste d'indicatifs)
-const INDICATIFS = [
-  { c: 'CM', d: '+237', f: '🇨🇲', n: 'Cameroun' },
-  { c: 'CI', d: '+225', f: '🇨🇮', n: "Côte d'Ivoire" },
-  { c: 'SN', d: '+221', f: '🇸🇳', n: 'Sénégal' },
-  { c: 'BJ', d: '+229', f: '🇧🇯', n: 'Bénin' },
-  { c: 'BF', d: '+226', f: '🇧🇫', n: 'Burkina Faso' },
-  { c: 'ML', d: '+223', f: '🇲🇱', n: 'Mali' },
-  { c: 'TG', d: '+228', f: '🇹🇬', n: 'Togo' },
-  { c: 'NE', d: '+227', f: '🇳🇪', n: 'Niger' },
-  { c: 'GA', d: '+241', f: '🇬🇦', n: 'Gabon' },
-  { c: 'CG', d: '+242', f: '🇨🇬', n: 'Congo' },
-  { c: 'CD', d: '+243', f: '🇨🇩', n: 'RD Congo' },
-  { c: 'GN', d: '+224', f: '🇬🇳', n: 'Guinée' },
-  { c: 'TD', d: '+235', f: '🇹🇩', n: 'Tchad' },
-  { c: 'CF', d: '+236', f: '🇨🇫', n: 'Centrafrique' },
-  { c: 'MA', d: '+212', f: '🇲🇦', n: 'Maroc' },
-  { c: 'DZ', d: '+213', f: '🇩🇿', n: 'Algérie' },
-  { c: 'TN', d: '+216', f: '🇹🇳', n: 'Tunisie' },
-  { c: 'FR', d: '+33', f: '🇫🇷', n: 'France' },
-  { c: 'BE', d: '+32', f: '🇧🇪', n: 'Belgique' },
-  { c: 'CH', d: '+41', f: '🇨🇭', n: 'Suisse' },
-  { c: 'CA', d: '+1', f: '🇨🇦', n: 'Canada' },
-  { c: 'US', d: '+1', f: '🇺🇸', n: 'États-Unis' },
-  { c: 'GB', d: '+44', f: '🇬🇧', n: 'Royaume-Uni' },
-  { c: 'DE', d: '+49', f: '🇩🇪', n: 'Allemagne' },
-  { c: 'IT', d: '+39', f: '🇮🇹', n: 'Italie' },
-  { c: 'ES', d: '+34', f: '🇪🇸', n: 'Espagne' },
-  { c: 'PT', d: '+351', f: '🇵🇹', n: 'Portugal' },
-]
 
 function devisePourPays(c) {
   if (['CM', 'GA', 'TD', 'CF', 'CG', 'GQ'].includes(c)) return 'XAF'
@@ -90,7 +67,7 @@ export default function Inscription({ onComplete }) {
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
   const [f, setF] = useState({
-    email: '', password: '', telephone: '', indicatif: '+237', prenom: '', date_naissance: '',
+    email: '', password: '', telephone: '', indicatif: '', prenom: '', date_naissance: '',
     genre: '', recherche_genre: '',
     pays_residence: '', ville: '', recherche_mode: 'mon_pays', recherche_pays: [],
     situation: '', enfants: '', profession: '',
@@ -99,6 +76,8 @@ export default function Inscription({ onComplete }) {
   })
 
   const set = (k, v) => setF(p => ({ ...p, [k]: v }))
+  // Choisir le pays remplit aussi l'indicatif automatiquement
+  const choisirPays = (c) => setF(p => ({ ...p, pays_residence: c, indicatif: INDICATIFS[c] || '' }))
   const toggle = (k, v, max) => setF(p => {
     const arr = p[k].includes(v) ? p[k].filter(x => x !== v) : [...p[k], v]
     if (max && arr.length > max) return p
@@ -112,14 +91,16 @@ export default function Inscription({ onComplete }) {
       if (!f.prenom.trim()) return 'Ton prénom est requis.'
       if (!/^[^@]+@[^@]+\.[^@]+$/.test(f.email)) return 'Email invalide.'
       if (f.password.length < 6) return 'Mot de passe : 6 caractères minimum.'
-      if (String(f.telephone).replace(/\D/g, '').length < 8) return 'Ton numéro de téléphone est requis (au moins 8 chiffres).'
+      if (!f.pays_residence) return 'Choisis ton pays de résidence.'
+      if (!f.indicatif) return "Ce pays n'a pas d'indicatif configuré. Choisis un autre pays."
+      if (!f.telephone.trim()) return 'Ton numéro de téléphone est requis.'
+      if (!f.ville.trim()) return 'Ta ville est requise.'
       if (!f.date_naissance) return 'Ta date de naissance est requise.'
       if (ageDepuis(f.date_naissance) < 40) return 'FortyDate est réservé aux personnes de 40 ans et plus.'
       if (!f.genre) return 'Indique si tu es un homme ou une femme.'
       if (!f.recherche_genre) return 'Indique qui tu recherches.'
     }
     if (n === 2) {
-      if (!f.pays_residence) return 'Choisis ton pays de résidence.'
       if (f.recherche_mode === 'pays_choisis' && f.recherche_pays.length === 0)
         return 'Choisis au moins un pays.'
     }
@@ -147,7 +128,7 @@ export default function Inscription({ onComplete }) {
         date_naissance: f.date_naissance,
         genre: f.genre,
         recherche_genre: f.recherche_genre,
-        telephone: (f.indicatif + f.telephone.replace(/\D/g, '')),
+        telephone: (f.indicatif + f.telephone.replace(/\s/g, '')) || null,
         pays_residence: f.pays_residence,
         ville: f.ville || null,
         recherche_mode: f.recherche_mode,
@@ -220,15 +201,27 @@ export default function Inscription({ onComplete }) {
             <Input label="Email" type="email" value={f.email} onChange={v => set('email', v)} />
             <label className="fd-l">Mot de passe</label>
             <ChampMotDePasse value={f.password} onChange={v => set('password', v)} />
-            <label className="fd-l">Téléphone (obligatoire)</label>
-            <div className="fd-telrow">
-              <select className="fd-in fd-indicatif" value={f.indicatif} onChange={e => set('indicatif', e.target.value)}>
-                {INDICATIFS.map(p => <option key={p.c} value={p.d}>{p.f} {p.d}</option>)}
-              </select>
-              <input className="fd-in" value={f.telephone} inputMode="numeric" placeholder="Numéro"
-                onChange={e => set('telephone', e.target.value)} />
+
+            <label className="fd-l">Pays de résidence</label>
+            <select className="fd-in" value={f.pays_residence} onChange={e => choisirPays(e.target.value)}>
+              <option value="">Choisir…</option>
+              {PAYS.map(p => <option key={p.c} value={p.c}>{p.n}</option>)}
+            </select>
+
+            <label className="fd-l">Téléphone (WhatsApp)</label>
+            <div style={{ display: 'flex', gap: '.5rem' }}>
+              <div style={{
+                flex: '0 0 auto', minWidth: '66px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                padding: '.8rem .6rem', border: '1.5px solid #E4D3D8', borderRadius: '12px',
+                background: '#F3E7EA', color: '#4A1546', fontWeight: 800, whiteSpace: 'nowrap'
+              }}>{f.indicatif || '—'}</div>
+              <input className="fd-in" type="tel" value={f.telephone} placeholder="6 12 34 56 78"
+                onChange={e => set('telephone', e.target.value)} style={{ flex: 1 }} />
             </div>
-            <DateNaissance value={f.date_naissance} onChange={v => set('date_naissance', v)} />
+
+            <Input label="Ville" value={f.ville} onChange={v => set('ville', v)} />
+
+            <Input label="Date de naissance" type="date" value={f.date_naissance} onChange={v => set('date_naissance', v)} />
             <Choix label="Je suis" value={f.genre} onChange={v => set('genre', v)}
               options={[['homme', 'Un homme'], ['femme', 'Une femme']]} />
             <Choix label="Je recherche" value={f.recherche_genre} onChange={v => set('recherche_genre', v)}
@@ -239,12 +232,6 @@ export default function Inscription({ onComplete }) {
         {/* ---------- ÉCRAN 2 ---------- */}
         {step === 2 && (
           <Ecran titre="Où veux-tu rencontrer ?" sous="Local par défaut, mondial si tu le choisis.">
-            <label className="fd-l">Pays de résidence</label>
-            <select className="fd-in" value={f.pays_residence} onChange={e => set('pays_residence', e.target.value)}>
-              <option value="">Choisir…</option>
-              {PAYS.map(p => <option key={p.c} value={p.c}>{p.n}</option>)}
-            </select>
-            <Input label="Ville" value={f.ville} onChange={v => set('ville', v)} />
             <Choix label="Je veux rencontrer" value={f.recherche_mode} onChange={v => set('recherche_mode', v)}
               options={[['mon_pays', 'Dans mon pays'], ['pays_choisis', 'Dans des pays précis'], ['partout', 'Partout dans le monde']]} />
             {f.recherche_mode === 'pays_choisis' && (
@@ -387,41 +374,6 @@ function ChampMotDePasse({ value, onChange, placeholder = 'Mot de passe' }) {
     </div>
   )
 }
-function DateNaissance({ value, onChange }) {
-  const dep = (value || '').split('-')
-  const [a, setA] = useState(dep[0] || '')
-  const [m, setM] = useState(dep[1] || '')
-  const [j, setJ] = useState(dep[2] || '')
-  const anneeMax = new Date().getFullYear() - 40
-  const annees = []
-  for (let y = anneeMax; y >= 1930; y--) annees.push(y)
-  const jours = []
-  for (let d = 1; d <= 31; d++) jours.push(String(d).padStart(2, '0'))
-  function maj(nj, nm, na) {
-    setJ(nj); setM(nm); setA(na)
-    onChange(nj && nm && na ? `${na}-${nm}-${nj}` : '')
-  }
-  return (
-    <>
-      <label className="fd-l">Date de naissance</label>
-      <div className="fd-daterow">
-        <select className="fd-in" value={j} onChange={e => maj(e.target.value, m, a)}>
-          <option value="">Jour</option>
-          {jours.map(d => <option key={d} value={d}>{d}</option>)}
-        </select>
-        <select className="fd-in" value={m} onChange={e => maj(j, e.target.value, a)}>
-          <option value="">Mois</option>
-          {MOIS.map((nom, k) => <option key={nom} value={String(k + 1).padStart(2, '0')}>{nom}</option>)}
-        </select>
-        <select className="fd-in" value={a} onChange={e => maj(j, m, e.target.value)}>
-          <option value="">Année</option>
-          {annees.map(y => <option key={y} value={y}>{y}</option>)}
-        </select>
-      </div>
-    </>
-  )
-}
-
 function Ecran({ titre, sous, children }) {
   return (
     <div className="fd-ecran">
@@ -491,11 +443,6 @@ function Style() {
       .fd-eye:hover{color:#D62A5E}
       .fd-eye svg{width:22px;height:22px}
       textarea.fd-in{resize:vertical}
-      .fd-daterow{display:flex;gap:.5rem}
-      .fd-telrow{display:flex;gap:.5rem}
-      .fd-telrow .fd-indicatif{flex:0 0 auto;width:auto;min-width:112px;padding-left:.5rem;padding-right:.3rem}
-      .fd-telrow input{flex:1}
-      .fd-daterow .fd-in{padding:.8rem .4rem}
       .fd-choix{display:flex;flex-wrap:wrap;gap:.5rem}
       .fd-opt{padding:.6rem 1rem;border:1.5px solid #E4D3D8;background:#fff;border-radius:99px;
         font-size:.92rem;cursor:pointer;color:#4A1546;transition:.15s}
