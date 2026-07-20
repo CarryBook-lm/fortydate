@@ -369,6 +369,7 @@ function Jaime({ moi, onVoir, onDiscuter }) {
   const [matchs, setMatchs] = useState(null)
   const [recus, setRecus] = useState(null)
   const [err, setErr] = useState('')
+  const [vue, setVue] = useState('matchs') // matchs | recus
   useEffect(() => {
     if (!moi) return
     let annule = false
@@ -384,35 +385,39 @@ function Jaime({ moi, onVoir, onDiscuter }) {
 
   if (err) return <div className="fdh-msg">{err}</div>
   if (matchs === null) return <div className="fdh-msg">Chargement…</div>
-  if (matchs.length === 0 && recus.length === 0)
-    return <div className="fdh-vide-etat"><div className="fdh-vide-emoji">💘</div>
-      <p>Pas encore de match.</p>
-      <p className="fdh-vide-sous">Aime des profils — quand c'est réciproque, ils apparaissent ici.</p></div>
+
+  const liste = vue === 'matchs' ? matchs : recus
+  const carte = (p) => (
+    <div key={p.id} className="fdh-carte fdh-carte-b">
+      <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></button>
+      <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></div>
+      <div className="fdh-2btn">
+        <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
+        <button className="b-disc" onClick={() => onDiscuter(p)}>Discuter</button>
+      </div>
+    </div>
+  )
 
   return (
     <div className="fdh-jaime">
-      {matchs.length > 0 && (
-        <section><h3 className="fdh-section-titre">Tes matchs <span>{matchs.length}</span></h3>
-          <div className="fdh-grid2">{matchs.map(p => (
-            <div key={p.id} className="fdh-carte fdh-carte-b">
-              <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></button>
-              <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></div>
-              <div className="fdh-2btn">
-                <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
-                <button className="b-disc" onClick={() => onDiscuter(p)}>Discuter</button>
-              </div>
-            </div>))}</div></section>)}
-      {recus.length > 0 && (
-        <section style={{ marginTop: '1.6rem' }}><h3 className="fdh-section-titre">Ils t'ont aimée <span>{recus.length}</span></h3>
-          <div className="fdh-grid2">{recus.map(p => (
-            <div key={p.id} className="fdh-carte fdh-carte-b">
-              <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></button>
-              <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></div>
-              <div className="fdh-2btn">
-                <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
-                <button className="b-disc" onClick={() => onDiscuter(p)}>Discuter</button>
-              </div>
-            </div>))}</div></section>)}
+      <div className="fdh-sousongl">
+        <button className={'fdh-sous' + (vue === 'matchs' ? ' on' : '')} onClick={() => setVue('matchs')}>
+          Tes matchs {matchs.length > 0 && <span>{matchs.length}</span>}
+        </button>
+        <button className={'fdh-sous' + (vue === 'recus' ? ' on' : '')} onClick={() => setVue('recus')}>
+          Ils t'ont aimée {recus.length > 0 && <span>{recus.length}</span>}
+        </button>
+      </div>
+
+      {liste.length === 0 ? (
+        <div className="fdh-vide-etat"><div className="fdh-vide-emoji">{vue === 'matchs' ? '💘' : '💗'}</div>
+          <p>{vue === 'matchs' ? 'Pas encore de match.' : "Personne ne t'a encore aimée."}</p>
+          <p className="fdh-vide-sous">{vue === 'matchs'
+            ? "Aime des profils — quand c'est réciproque, ils apparaissent ici."
+            : "Continue d'explorer les profils, ça viendra !"}</p></div>
+      ) : (
+        <div className="fdh-grid2">{liste.map(carte)}</div>
+      )}
     </div>
   )
 }
@@ -1269,7 +1274,7 @@ export default function Accueil({ onDeconnexion }) {
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Abonnement : Passez à Sérénité</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #A</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #C</div>
           </div>
         </div>
       )}
@@ -1305,6 +1310,8 @@ export default function Accueil({ onDeconnexion }) {
 function Style() {
   return (
     <style>{`
+      html,body{margin:0;padding:0}
+      #root{width:100%;max-width:480px;margin:0 auto}
       .fdh-app{min-height:100vh;background:#FBF4F5;font-family:system-ui,'Segoe UI',sans-serif;
         color:#3A0F38;display:flex;flex-direction:column;width:100%;max-width:480px;margin:0 auto;position:relative}
       .fdh-main{flex:1;width:100%;max-width:480px;margin:0 auto;box-sizing:border-box;padding:1rem 1rem calc(72px + 1rem + env(safe-area-inset-bottom));overflow-y:auto}
@@ -1334,7 +1341,8 @@ function Style() {
       .fdh-carte{border:0;padding:0;text-align:left;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 18px -12px rgba(58,15,56,.4);cursor:pointer}
       .fdh-carte-photo{width:100%;aspect-ratio:1 / 1.414;background:#EDE0E4;position:relative}
       .fdh-pct-badge{position:absolute;top:.5rem;right:.5rem;color:#fff;font-weight:800;font-size:.85rem;padding:.2rem .55rem;border-radius:99px;box-shadow:0 4px 10px -4px rgba(0,0,0,.4)}
-      .fdh-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem;align-items:start}
+      .fdh-grid2{display:flex;flex-wrap:wrap;gap:.7rem;align-items:flex-start;justify-content:flex-start}
+      .fdh-grid2 > *{flex:1 1 calc(50% - .35rem);max-width:calc(50% - .35rem);min-width:0}
       .fdh-carte-b{display:flex;flex-direction:column}
       .fdh-carte-b .fdh-carte-photo{border:0;padding:0;cursor:pointer;width:100%;aspect-ratio:1 / 1}
       .fdh-2btn{display:flex;gap:.4rem;padding:.15rem .5rem .5rem}
@@ -1449,6 +1457,11 @@ function Style() {
 
       /* J'aime */
       .fdh-section-titre{font-size:1.05rem;font-weight:800;color:#4A1546;margin:.2rem 0 .8rem;display:flex;align-items:center;gap:.5rem}
+      .fdh-sousongl{display:flex;gap:.5rem;margin-bottom:1rem}
+      .fdh-sous{flex:1;background:#fff;border:1.5px solid #E4D3D8;border-radius:12px;padding:.7rem .5rem;font-weight:800;font-size:.9rem;color:#7A6B74;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.4rem}
+      .fdh-sous.on{background:#D62A5E;border-color:#D62A5E;color:#fff}
+      .fdh-sous span{background:rgba(255,255,255,.3);color:inherit;font-size:.75rem;padding:.05rem .45rem;border-radius:99px}
+      .fdh-sous:not(.on) span{background:#D62A5E;color:#fff}
       .fdh-section-titre span{background:#D62A5E;color:#fff;font-size:.72rem;padding:.1rem .5rem;border-radius:99px}
       .fdh-jgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem}
       .fdh-jcarte{background:#fff;border:0;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 8px 22px -14px rgba(58,15,56,.4);text-align:center;padding-bottom:.7rem}
