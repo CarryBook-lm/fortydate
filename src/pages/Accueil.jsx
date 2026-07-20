@@ -6,7 +6,7 @@
 // ============================================================
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { uploadPhotoOptimisee } from '../lib/photo'
+import { uploadPhotoOptimisee, miniature } from '../lib/photo'
 
 /* ---------------- Questionnaire d'affinités (30 questions) ---------------- */
 // nominal:true  -> il faut la même réponse (0 ou 1)
@@ -179,8 +179,18 @@ function sepIndicatif(tel) {
   return { indicatif: '+237', local: t.replace(/\D/g, '') }
 }
 
-function Avatar({ url, prenom, taille = '100%' }) {
-  if (url) return <img className="fdh-photo" src={url} alt={prenom} style={{ height: taille }} />
+// Largeur de miniature adaptée à la taille d'affichage (retina, bornée)
+function largeurMini(taille) {
+  if (typeof taille === 'string' && taille.endsWith('px')) {
+    const n = parseInt(taille, 10) || 60
+    return Math.min(Math.max(n * 2, 120), 640)
+  }
+  return 500 // cartes en "100%" ou taille inconnue
+}
+
+function Avatar({ url, prenom, taille = '100%', pleine = false }) {
+  const src = pleine ? url : miniature(url, largeurMini(taille))
+  if (url) return <img className="fdh-photo" src={src} alt={prenom} style={{ height: taille }} />
   const lettre = (prenom || '?').charAt(0).toUpperCase()
   return <div className="fdh-photo fdh-vide" style={{ height: taille }}>{lettre}</div>
 }
@@ -247,7 +257,7 @@ function FicheProfil({ profil, moi, onFermer }) {
         {album.length > 1 && (
           <div className="fdh-fiche-vignettes">
             {album.map(u => (
-              <img key={u} src={u} alt="" className={u === actuelle ? 'on' : ''} onClick={() => setActuelle(u)} />
+              <img key={u} src={miniature(u, 140)} alt="" className={u === actuelle ? 'on' : ''} onClick={() => setActuelle(u)} />
             ))}
           </div>
         )}
@@ -792,16 +802,16 @@ function MonProfil({ moi, onDeconnexion, onMaj }) {
       {moi.bio && <p className="fdh-profil-bio">« {moi.bio} »</p>}
 
       {/* Album */}
-      <h3 className="fdh-album-titre">Mes photos <span>{album.length}/9</span></h3>
+      <h3 className="fdh-album-titre">Mes photos <span>{album.length}/5</span></h3>
       <div className="fdh-album">
         {album.map(url => (
           <button key={url} className={'fdh-album-photo' + (url === moi.photo_principale ? ' principale' : '')}
             onClick={() => setMenuPhoto(url)}>
-            <img src={url} alt="" />
+            <img src={miniature(url, 300)} alt="" />
             {url === moi.photo_principale && <span className="fdh-album-badge">Profil</span>}
           </button>
         ))}
-        {album.length < 9 && (
+        {album.length < 5 && (
           <label className="fdh-album-ajout">
             {envoi ? '…' : '＋'}
             <input type="file" accept="image/*" hidden disabled={envoi}
@@ -823,7 +833,7 @@ function MonProfil({ moi, onDeconnexion, onMaj }) {
       {menuPhoto && (
         <div className="fdh-pmenu-fond" onClick={() => setMenuPhoto(null)}>
           <div className="fdh-pmenu" onClick={e => e.stopPropagation()}>
-            <img src={menuPhoto} alt="" className="fdh-pmenu-apercu" />
+            <img src={miniature(menuPhoto, 500)} alt="" className="fdh-pmenu-apercu" />
             {menuPhoto !== moi.photo_principale &&
               <button className="fdh-pmenu-btn" onClick={() => definirPrincipale(menuPhoto)}>⭐ Définir comme photo de profil</button>}
             <button className="fdh-pmenu-btn danger" onClick={() => supprimerPhoto(menuPhoto)}>🗑️ Supprimer cette photo</button>
@@ -1552,7 +1562,7 @@ export default function Accueil({ onDeconnexion }) {
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #M</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #N</div>
           </div>
         </div>
       )}
