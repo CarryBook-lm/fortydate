@@ -9,10 +9,19 @@ export async function campayStatus(reference) {
   return r.json()
 }
 
-// Active l'abonnement dans Supabase. external_reference = "user_id:jours"
+// Active l'abonnement dans Supabase.
+// external_reference nouveau format = "FD_<user_id>_<jours>"  (ancien = "user_id:jours")
 // Idempotent : la contrainte unique (source, reference) empêche toute double activation.
 export async function activerAbonnement(t) {
-  const [userId, joursStr] = String(t.external_reference || '').split(':')
+  const ref = String(t.external_reference || '')
+  let userId, joursStr
+  if (ref.startsWith('FD_')) {
+    const parts = ref.split('_')      // ['FD', user_id, jours]
+    userId = parts[1]
+    joursStr = parts[2]
+  } else {
+    ;[userId, joursStr] = ref.split(':')   // ancien format, au cas où
+  }
   const jours = parseInt(joursStr, 10) || 30
   const url = process.env.SUPABASE_URL + '/rest/v1/rpc/activer_abonnement'
   await fetch(url, {
