@@ -44,6 +44,11 @@ export default function Landing({ onInscription, onConnexion }) {
       </header>
 
       <main className="fdl-main">
+        <div className="fdl-badge40">
+          <span className="fdl-badge40-num">40+</span>
+          <span>La rencontre sérieuse à partir de 40 ans</span>
+        </div>
+
         <h1 className="fdl-titre">
           L'amour<br />n'a pas d'âge,<br />
           <span className="fdl-rose">la sincérité</span><br />fait la différence.
@@ -55,8 +60,12 @@ export default function Landing({ onInscription, onConnexion }) {
           <img
             src="/hero.jpg"
             alt=""
-            onError={(e) => { e.currentTarget.style.display = 'none' }}
+            onError={(e) => { e.currentTarget.classList.add('vide') }}
           />
+          <div className="fdl-photo-txt">
+            <span className="fdl-photo-40">40+</span>
+            <span>Célibataires, divorcés et veufs<br />de 40 ans et plus</span>
+          </div>
         </div>
 
         <p className="fdl-sous">
@@ -123,15 +132,29 @@ function Style() {
       .fdl-logo{height:52px;width:auto;max-width:92%;object-fit:contain;display:block}
 
       .fdl-main{padding:.4rem 1.4rem 0}
+
+      .fdl-badge40{display:inline-flex;align-items:center;gap:.5rem;
+        background:#f6e9f0;color:#4A1546;border:1px solid #e7cede;
+        border-radius:99px;padding:.4rem .8rem .4rem .45rem;
+        font-size:.82rem;font-weight:700;margin:.7rem 0 .2rem}
+      .fdl-badge40-num{background:#D62A5E;color:#fff;font-weight:800;
+        border-radius:99px;padding:.15rem .55rem;font-size:.86rem;letter-spacing:-.5px}
+
       .fdl-titre{font-size:2.15rem;line-height:1.12;font-weight:800;
-        color:#3a1230;letter-spacing:-.5px;margin:.6rem 0 .2rem}
+        color:#3a1230;letter-spacing:-.5px;margin:.5rem 0 .2rem}
       .fdl-rose{color:#D62A5E}
       .fdl-coeur-deco{margin:.1rem 0 .3rem}
 
-      .fdl-photo{margin:.7rem 0 1.1rem;border-radius:20px;overflow:hidden;
-        background:linear-gradient(135deg,#4A1546 0%,#D62A5E 60%,#C69A4E 100%);
+      .fdl-photo{position:relative;margin:.7rem 0 1.1rem;border-radius:20px;overflow:hidden;
+        background:linear-gradient(135deg,#4A1546 0%,#D62A5E 55%,#C69A4E 100%);
         aspect-ratio:16/11;display:flex;align-items:center;justify-content:center}
-      .fdl-photo img{width:100%;height:100%;object-fit:cover;display:block}
+      .fdl-photo img{position:relative;z-index:2;width:100%;height:100%;object-fit:cover;display:block}
+      .fdl-photo img.vide{display:none}
+      .fdl-photo-txt{position:absolute;inset:0;z-index:1;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;gap:.5rem;text-align:center;
+        color:#fff;padding:1rem;line-height:1.35;font-weight:600;
+        text-shadow:0 2px 12px rgba(0,0,0,.28)}
+      .fdl-photo-40{font-size:3.2rem;font-weight:800;letter-spacing:-2px;line-height:1}
 
       .fdl-sous{border-left:3px solid #C69A4E;padding-left:.8rem;
         font-size:1.02rem;line-height:1.4;color:#5a3652;font-weight:500;margin:.4rem 0 1.3rem}
