@@ -1382,7 +1382,7 @@ function Admin({ onVoir }) {
         <button className={'fdh-sous' + (vue === 'stats' ? ' on' : '')} onClick={() => setVue('stats')}>Stats</button>
         <button className={'fdh-sous' + (vue === 'membres' ? ' on' : '')} onClick={() => setVue('membres')}>Membres</button>
         <button className={'fdh-sous' + (vue === 'paiements' ? ' on' : '')} onClick={() => setVue('paiements')}>Paiements</button>
-        <button className={'fdh-sous' + (vue === 'signal' ? ' on' : '')} onClick={() => setVue('signal')}>Signalements {signalements.length > 0 && <span>{signalements.length}</span>}</button>
+        <button className={'fdh-sous' + (vue === 'signal' ? ' on' : '')} onClick={() => setVue('signal')}>Signalés {signalements.length > 0 && <span>{signalements.length}</span>}</button>
       </div>
       {msg && <div className="fdh-abo-msg err">{msg}</div>}
 
@@ -1554,7 +1554,7 @@ export default function Accueil({ onDeconnexion }) {
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #H</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #I</div>
           </div>
         </div>
       )}
@@ -1741,8 +1741,8 @@ function Style() {
 
       /* J'aime */
       .fdh-section-titre{font-size:1.05rem;font-weight:800;color:#4A1546;margin:.2rem 0 .8rem;display:flex;align-items:center;gap:.5rem}
-      .fdh-sousongl{display:flex;gap:.5rem;margin-bottom:1rem}
-      .fdh-sous{flex:1;background:#fff;border:1.5px solid #E4D3D8;border-radius:12px;padding:.7rem .5rem;font-weight:800;font-size:.9rem;color:#7A6B74;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.4rem}
+      .fdh-sousongl{display:flex;gap:.4rem;margin-bottom:1rem}
+      .fdh-sous{flex:1;min-width:0;background:#fff;border:1.5px solid #E4D3D8;border-radius:12px;padding:.6rem .3rem;font-weight:800;font-size:.82rem;color:#7A6B74;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.3rem;white-space:nowrap}
       .fdh-sous.on{background:#D62A5E;border-color:#D62A5E;color:#fff}
       .fdh-sous span{background:rgba(255,255,255,.3);color:inherit;font-size:.75rem;padding:.05rem .45rem;border-radius:99px}
       .fdh-sous:not(.on) span{background:#D62A5E;color:#fff}
