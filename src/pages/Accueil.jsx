@@ -1008,7 +1008,7 @@ function Abonnement({ moi, onFini, onClose }) {
   }
 
   async function payerChariow() {
-    setMsg('')
+    setMsg(''); setEtape('redir')   // retour visuel IMMÉDIAT
     try {
       const { data: { user } } = await supabase.auth.getUser()
       const r = await fetch('/api/chariow-checkout', {
@@ -1016,12 +1016,12 @@ function Abonnement({ moi, onFini, onClose }) {
         body: JSON.stringify({ plan: plan.id, user_id: moi.id, email: user?.email, first_name: moi.prenom, phone: tel || moi.telephone, pays: moi.pays_residence })
       })
       const d = await r.json()
-      if (d.checkout_url) window.location.href = d.checkout_url
-      else setMsg(d.error || 'Paiement carte indisponible pour le moment.')
-    } catch (e) { setMsg('Connexion impossible (teste sur le site en ligne).') }
+      if (d.checkout_url) { window.location.href = d.checkout_url; return }
+      setEtape('methode'); setMsg(d.error || 'Paiement carte indisponible pour le moment.')
+    } catch (e) { setEtape('methode'); setMsg('Connexion impossible (teste sur le site en ligne).') }
   }
 
-  const enAttente = etape === 'attente'
+  const enAttente = etape === 'attente' || etape === 'redir'
 
   return (
     <div className="fdh-modal-fond" onClick={enAttente ? undefined : onClose}>
@@ -1034,6 +1034,13 @@ function Abonnement({ moi, onFini, onClose }) {
             <h2>Bienvenue chez Sérénité !</h2>
             <p>Ton abonnement est activé. Tu as accès à toutes les fonctionnalités premium.</p>
             <button className="fdh-btn-rose" style={{ width: '100%' }} onClick={onClose}>Continuer</button>
+          </div>
+
+        ) : etape === 'redir' ? (
+          <div className="fdh-modal-attente">
+            <div className="fdh-spinner" />
+            <h3 style={{ marginTop: '1rem' }}>Redirection vers le paiement sécurisé…</h3>
+            <p className="fdh-attente-note">Merci de patienter quelques secondes, la page de paiement va s'ouvrir.</p>
           </div>
 
         ) : etape === 'attente' ? (
