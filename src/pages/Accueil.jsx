@@ -1472,7 +1472,7 @@ function Admin({ onVoir }) {
 /* ============================================================ */
 export default function Accueil({ onDeconnexion }) {
   const [onglet, setOnglet] = useState(() => {
-    try { return localStorage.getItem('fd_onglet') || 'proximite' } catch (_) { return 'proximite' }
+    try { return localStorage.getItem('fd_onglet') || 'rencontres' } catch (_) { return 'rencontres' }
   })
   useEffect(() => { try { localStorage.setItem('fd_onglet', onglet) } catch (_) {} }, [onglet])
   const [moi, setMoi] = useState(null)
@@ -1526,7 +1526,7 @@ export default function Accueil({ onDeconnexion }) {
     return () => clearInterval(t)
   }, [])
 
-  const titres = { proximite: 'À proximité', rencontres: 'Rencontres', jaime: "J'aime", messages: 'Messages', match: 'Affinités', visites: 'Visites' }
+  const titres = { proximite: 'À proximité', rencontres: 'Rencontre', jaime: "J'aime", messages: 'Messages', match: 'Affinités', visites: 'Visites' }
   const titreOverlay = { profil: 'Mon profil', questionnaire: 'Affinités', abonnement: 'Sérénité' }
   const allerOnglet = (id) => { setOverlay(null); setMenuOuvert(false); setOnglet(id) }
   const ouvrirOverlay = (v) => { setOverlay(v); setMenuOuvert(false) }
@@ -1554,7 +1554,7 @@ export default function Accueil({ onDeconnexion }) {
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #J</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #K</div>
           </div>
         </div>
       )}
@@ -1574,7 +1574,7 @@ export default function Accueil({ onDeconnexion }) {
       </main>
 
       <nav className="fdh-nav">
-        {[['proximite', '📍', 'Proximité'], ['rencontres', '💑', 'Rencontres'], ['jaime', '❤️', "J'aime"],
+        {[['proximite', '📍', 'Proximité'], ['jaime', '❤️', "J'aime"], ['rencontres', '💑', 'Rencontre'],
           ['messages', '💬', 'Messages'], ['match', '✨', 'Affinités'],
           estAdmin ? ['admin', '🛡️', 'S.Admin'] : ['visites', '👀', 'Visites']].map(([id, emoji, label]) => (
           <button key={id} className={'fdh-tab' + (!overlay && onglet === id ? ' on' : '')} onClick={() => allerOnglet(id)}>
