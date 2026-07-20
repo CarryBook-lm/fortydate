@@ -58,7 +58,7 @@ export default function Landing({ onInscription, onConnexion }) {
 
         <div className="fdl-photo">
           <img
-            src="/hero.jpg"
+            src="/hero.png"
             alt=""
             onError={(e) => { e.currentTarget.classList.add('vide') }}
           />
