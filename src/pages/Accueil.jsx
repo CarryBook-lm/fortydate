@@ -137,6 +137,31 @@ const NOM_PAYS = {
 }
 function couleurCompat(p) { return p >= 80 ? '#1c8a3e' : p >= 60 ? '#C69A4E' : '#9a8b92' }
 
+// Listes pour l'édition du profil
+const INDICATIFS = [
+  { c: 'CM', d: '+237', f: '🇨🇲' }, { c: 'CI', d: '+225', f: '🇨🇮' }, { c: 'SN', d: '+221', f: '🇸🇳' },
+  { c: 'BJ', d: '+229', f: '🇧🇯' }, { c: 'BF', d: '+226', f: '🇧🇫' }, { c: 'ML', d: '+223', f: '🇲🇱' },
+  { c: 'TG', d: '+228', f: '🇹🇬' }, { c: 'NE', d: '+227', f: '🇳🇪' }, { c: 'GA', d: '+241', f: '🇬🇦' },
+  { c: 'CG', d: '+242', f: '🇨🇬' }, { c: 'CD', d: '+243', f: '🇨🇩' }, { c: 'GN', d: '+224', f: '🇬🇳' },
+  { c: 'TD', d: '+235', f: '🇹🇩' }, { c: 'CF', d: '+236', f: '🇨🇫' }, { c: 'MA', d: '+212', f: '🇲🇦' },
+  { c: 'DZ', d: '+213', f: '🇩🇿' }, { c: 'TN', d: '+216', f: '🇹🇳' }, { c: 'FR', d: '+33', f: '🇫🇷' },
+  { c: 'BE', d: '+32', f: '🇧🇪' }, { c: 'CH', d: '+41', f: '🇨🇭' }, { c: 'CA', d: '+1', f: '🇨🇦' },
+  { c: 'US', d: '+1', f: '🇺🇸' }, { c: 'GB', d: '+44', f: '🇬🇧' }, { c: 'DE', d: '+49', f: '🇩🇪' },
+  { c: 'IT', d: '+39', f: '🇮🇹' }, { c: 'ES', d: '+34', f: '🇪🇸' }, { c: 'PT', d: '+351', f: '🇵🇹' },
+]
+const LISTE_PAYS = Object.keys(NOM_PAYS).map(c => ({ c, n: NOM_PAYS[c] }))
+const VALEURS = ['Honnêteté', 'Foi / spiritualité', 'Famille', 'Ambition', 'Tendresse', 'Communication', 'Stabilité', 'Humour']
+const INTERETS = ['Voyages', 'Cuisine', 'Foi', 'Musique', 'Sport', 'Lecture', 'Cinéma', 'Nature', 'Danse', 'Art']
+const LANGUES = ['Français', 'Anglais', 'Arabe', 'Espagnol', 'Portugais', 'Langue locale']
+
+// Sépare un numéro international (+2250700...) en indicatif + numéro local
+function sepIndicatif(tel) {
+  const t = String(tel || '')
+  const trouve = [...INDICATIFS].sort((a, b) => b.d.length - a.d.length).find(i => t.startsWith(i.d))
+  if (trouve) return { indicatif: trouve.d, local: t.slice(trouve.d.length).replace(/\D/g, '') }
+  return { indicatif: '+237', local: t.replace(/\D/g, '') }
+}
+
 function Avatar({ url, prenom, taille = '100%' }) {
   if (url) return <img className="fdh-photo" src={url} alt={prenom} style={{ height: taille }} />
   const lettre = (prenom || '?').charAt(0).toUpperCase()
@@ -483,10 +508,156 @@ function Questionnaire({ moi, reponsesInit, onFini }) {
 }
 
 /* ---------------- Mon profil (avec album 9 photos) ---------------- */
+function EditerProfil({ moi, onFerme, onMaj }) {
+  const sep = sepIndicatif(moi.telephone)
+  const [f, setF] = useState({
+    indicatif: sep.indicatif,
+    telephone: sep.local,
+    bio: moi.bio || '',
+    ville: moi.ville || '',
+    pays_residence: moi.pays_residence || '',
+    situation: moi.situation || '',
+    enfants: moi.enfants || '',
+    profession: moi.profession || '',
+    type_relation: moi.type_relation || '',
+    recherche_genre: moi.recherche_genre || '',
+    recherche_mode: moi.recherche_mode || 'mon_pays',
+    recherche_pays: Array.isArray(moi.recherche_pays) ? moi.recherche_pays : [],
+    valeurs: Array.isArray(moi.valeurs) ? moi.valeurs : [],
+    interets: Array.isArray(moi.interets) ? moi.interets : [],
+    langues: Array.isArray(moi.langues) ? moi.langues : [],
+  })
+  const [envoi, setEnvoi] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  const set = (k, v) => setF(o => ({ ...o, [k]: v }))
+  const toggle = (k, v) => setF(o => ({ ...o, [k]: o[k].includes(v) ? o[k].filter(x => x !== v) : [...o[k], v] }))
+
+  async function enregistrer() {
+    if (String(f.telephone).replace(/\D/g, '').length < 6) { setMsg('Numéro de téléphone invalide.'); return }
+    setEnvoi(true); setMsg('')
+    const maj = {
+      telephone: f.indicatif + f.telephone.replace(/\D/g, ''),
+      bio: f.bio.trim(),
+      ville: f.ville.trim(),
+      pays_residence: f.pays_residence,
+      situation: f.situation || null,
+      enfants: f.enfants || null,
+      profession: f.profession.trim() || null,
+      type_relation: f.type_relation || null,
+      recherche_genre: f.recherche_genre || null,
+      recherche_mode: f.recherche_mode,
+      recherche_pays: f.recherche_mode === 'pays_choisis' ? f.recherche_pays : [],
+      valeurs: f.valeurs, interets: f.interets, langues: f.langues,
+    }
+    try {
+      const { error } = await supabase.from('profiles').update(maj).eq('id', moi.id)
+      if (error) throw error
+      onMaj({ ...moi, ...maj })
+      onFerme()
+    } catch (e) { setMsg('Échec de l\'enregistrement. Réessaie.') } finally { setEnvoi(false) }
+  }
+
+  return (
+    <div className="fdh-edit">
+      <div className="fdh-fiche-head">
+        <button className="fdh-retour" onClick={onFerme}>‹</button>
+        <span className="fdh-chat-nom">Modifier mon profil</span>
+      </div>
+      <div className="fdh-edit-scroll">
+        <label className="fdh-el">Téléphone</label>
+        <div className="fdh-telrow">
+          <select className="fdh-ein fdh-eindic" value={f.indicatif} onChange={e => set('indicatif', e.target.value)}>
+            {INDICATIFS.map(p => <option key={p.c} value={p.d}>{p.f} {p.d}</option>)}
+          </select>
+          <input className="fdh-ein" value={f.telephone} inputMode="numeric" placeholder="Numéro" onChange={e => set('telephone', e.target.value)} />
+        </div>
+
+        <label className="fdh-el">À propos de moi</label>
+        <textarea className="fdh-ein fdh-etext" value={f.bio} rows={3} maxLength={300} placeholder="Décris-toi en quelques mots…" onChange={e => set('bio', e.target.value)} />
+
+        <label className="fdh-el">Ville</label>
+        <input className="fdh-ein" value={f.ville} placeholder="Ta ville" onChange={e => set('ville', e.target.value)} />
+
+        <label className="fdh-el">Pays de résidence</label>
+        <select className="fdh-ein" value={f.pays_residence} onChange={e => set('pays_residence', e.target.value)}>
+          <option value="">Choisir…</option>
+          {LISTE_PAYS.map(p => <option key={p.c} value={p.c}>{p.n}</option>)}
+        </select>
+
+        <label className="fdh-el">Profession</label>
+        <input className="fdh-ein" value={f.profession} placeholder="Ta profession" onChange={e => set('profession', e.target.value)} />
+
+        <label className="fdh-el">Situation</label>
+        <select className="fdh-ein" value={f.situation} onChange={e => set('situation', e.target.value)}>
+          <option value="">Choisir…</option>
+          {Object.keys(L_SITUATION).map(k => <option key={k} value={k}>{L_SITUATION[k]}</option>)}
+        </select>
+
+        <label className="fdh-el">Enfants</label>
+        <select className="fdh-ein" value={f.enfants} onChange={e => set('enfants', e.target.value)}>
+          <option value="">Choisir…</option>
+          {Object.keys(L_ENFANTS).filter(k => L_ENFANTS[k]).map(k => <option key={k} value={k}>{L_ENFANTS[k]}</option>)}
+        </select>
+
+        <label className="fdh-el">Type de relation recherchée</label>
+        <select className="fdh-ein" value={f.type_relation} onChange={e => set('type_relation', e.target.value)}>
+          <option value="">Choisir…</option>
+          {Object.keys(L_TYPEREL).map(k => <option key={k} value={k}>{L_TYPEREL[k]}</option>)}
+        </select>
+
+        <label className="fdh-el">Je recherche</label>
+        <select className="fdh-ein" value={f.recherche_genre} onChange={e => set('recherche_genre', e.target.value)}>
+          <option value="">Choisir…</option>
+          <option value="homme">Un homme</option>
+          <option value="femme">Une femme</option>
+          <option value="les_deux">Tout le monde</option>
+        </select>
+
+        <label className="fdh-el">Où chercher</label>
+        <select className="fdh-ein" value={f.recherche_mode} onChange={e => set('recherche_mode', e.target.value)}>
+          <option value="mon_pays">Dans mon pays</option>
+          <option value="tous">Tous les pays</option>
+          <option value="pays_choisis">Des pays précis</option>
+        </select>
+        {f.recherche_mode === 'pays_choisis' && (
+          <div className="fdh-echips">
+            {LISTE_PAYS.map(p => (
+              <button key={p.c} type="button" className={'fdh-echip' + (f.recherche_pays.includes(p.c) ? ' on' : '')} onClick={() => toggle('recherche_pays', p.c)}>{p.n}</button>
+            ))}
+          </div>
+        )}
+
+        <label className="fdh-el">Ce qui compte pour moi</label>
+        <div className="fdh-echips">
+          {VALEURS.map(v => <button key={v} type="button" className={'fdh-echip' + (f.valeurs.includes(v) ? ' on' : '')} onClick={() => toggle('valeurs', v)}>{v}</button>)}
+        </div>
+
+        <label className="fdh-el">Centres d'intérêt</label>
+        <div className="fdh-echips">
+          {INTERETS.map(v => <button key={v} type="button" className={'fdh-echip' + (f.interets.includes(v) ? ' on' : '')} onClick={() => toggle('interets', v)}>{v}</button>)}
+        </div>
+
+        <label className="fdh-el">Langues parlées</label>
+        <div className="fdh-echips">
+          {LANGUES.map(v => <button key={v} type="button" className={'fdh-echip' + (f.langues.includes(v) ? ' on' : '')} onClick={() => toggle('langues', v)}>{v}</button>)}
+        </div>
+
+        {msg && <div className="fdh-abo-msg err">{msg}</div>}
+        <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }} disabled={envoi} onClick={enregistrer}>
+          {envoi ? 'Enregistrement…' : '✅ Enregistrer'}
+        </button>
+        <button className="fdh-btn-texte" onClick={onFerme}>Annuler</button>
+      </div>
+    </div>
+  )
+}
+
 function MonProfil({ moi, onDeconnexion, onMaj }) {
   const [envoi, setEnvoi] = useState(false)
   const [msg, setMsg] = useState('')
   const [menuPhoto, setMenuPhoto] = useState(null) // url de la photo sélectionnée
+  const [editer, setEditer] = useState(false)
   const album = Array.isArray(moi?.photos) ? moi.photos : []
 
   async function ajouterPhoto(file) {
@@ -533,6 +704,7 @@ function MonProfil({ moi, onDeconnexion, onMaj }) {
   }
 
   if (!moi) return <div className="fdh-msg">Chargement…</div>
+  if (editer) return <EditerProfil moi={moi} onFerme={() => setEditer(false)} onMaj={onMaj} />
   const age = ageDepuis(moi.date_naissance)
   return (
     <div className="fdh-profil">
@@ -566,6 +738,7 @@ function MonProfil({ moi, onDeconnexion, onMaj }) {
         <span className="fdh-tag">Recherche : {moi.recherche_genre === 'les_deux' ? 'tout le monde' : moi.recherche_genre}</span>
         <span className="fdh-tag">{moi.abo_statut === 'actif' ? '⭐ Sérénité' : 'Découverte (gratuit)'}</span>
       </div>
+      <button className="fdh-btn-rose" style={{ marginTop: '.4rem' }} onClick={() => setEditer(true)}>✏️ Modifier mon profil</button>
       <button className="fdh-btn-deco" onClick={onDeconnexion}>Se déconnecter</button>
 
       {/* Menu au clic sur une photo */}
@@ -1225,6 +1398,16 @@ function Style() {
       .fdh-btn-orange:hover{background:#e85f00}
       .fdh-btn-texte{display:block;width:100%;margin-top:1rem;background:none;border:0;color:#7A6B74;font-weight:700;cursor:pointer;padding:.4rem}
       .fdh-methode-titre{font-size:1.35rem;margin:.4rem 0 .2rem;text-align:center;color:#4A1546}
+      .fdh-edit{position:fixed;inset:0;max-width:520px;margin:0 auto;background:#FBF4F5;z-index:30;display:flex;flex-direction:column}
+      .fdh-edit-scroll{flex:1;overflow-y:auto;padding:1rem 1.1rem calc(2rem + env(safe-area-inset-bottom))}
+      .fdh-el{display:block;font-weight:700;color:#4A1546;margin:1rem 0 .35rem;font-size:.95rem}
+      .fdh-ein{width:100%;box-sizing:border-box;padding:.8rem;border:1.5px solid #E4D3D8;border-radius:12px;background:#fff;color:#3A0F38;font-size:1rem}
+      .fdh-ein:focus{outline:none;border-color:#D62A5E}
+      .fdh-etext{resize:vertical;font-family:inherit}
+      .fdh-eindic{flex:0 0 auto;width:auto;min-width:112px}
+      .fdh-echips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.3rem}
+      .fdh-echip{background:#fff;border:1.5px solid #E4D3D8;border-radius:999px;padding:.5rem .9rem;font-size:.9rem;color:#4A1546;cursor:pointer}
+      .fdh-echip.on{background:#D62A5E;border-color:#D62A5E;color:#fff}
       .fdh-numero{text-align:center;padding:.5rem 0}
       .fdh-numero-titre{font-size:1.5rem;margin:.6rem 0 .3rem;color:#4A1546}
       .fdh-numero-sous{color:#7A6B74;font-size:.95rem;margin:0 0 1.3rem}
