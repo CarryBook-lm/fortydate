@@ -791,7 +791,7 @@ const PLANS = [
 ]
 
 function Abonnement({ moi, onFini, onClose }) {
-  const [tel, setTel] = useState(moi?.telephone || '')
+  const [tel, setTel] = useState('')
   const [plan, setPlan] = useState(PLANS[0])
   const [etape, setEtape] = useState('plans') // plans | methode | numero | attente | ok | echec
   const [operateur, setOperateur] = useState('')
@@ -1224,7 +1224,7 @@ function Style() {
       .fdh-numero-titre{font-size:1.5rem;margin:.6rem 0 .3rem;color:#4A1546}
       .fdh-numero-sous{color:#7A6B74;font-size:.95rem;margin:0 0 1.3rem}
       .fdh-numero-in{width:100%;box-sizing:border-box;padding:1.1rem;border:1.5px solid #E4D3D8;border-radius:14px;
-        font-size:1.3rem;text-align:center;letter-spacing:2px;background:#faf6f7;color:#3A0F38}
+        font-size:1.3rem;text-align:left;letter-spacing:1px;background:#faf6f7;color:#3A0F38}
       .fdh-numero-in:focus{outline:none;border-color:#D62A5E;background:#fff}
       .fdh-attente-emoji{font-size:3rem;text-align:center;margin-bottom:.4rem}
       .fdh-attente-alerte{background:#fdeef2;color:#B21F4E;border:1.5px solid #f5c2d3;border-radius:12px;padding:.9rem;text-align:center;font-weight:800;margin:.6rem 0}
