@@ -199,7 +199,7 @@ const L_ENFANTS = { avec_moi: 'Enfants avec moi', independants: 'Enfants indépe
 const L_TYPEREL = { serieuse: 'Relation sérieuse et durable', mariage: 'En vue du mariage', compagnon: 'Compagnon / compagne de vie', selon_personne: 'Selon la personne' }
 
 /* ---------------- Fiche profil détaillée (album + infos) ---------------- */
-function FicheProfil({ profil, onFermer }) {
+function FicheProfil({ profil, moi, onFermer }) {
   const principale = profil.photo_principale || null
   const autres = (Array.isArray(profil.photos) ? profil.photos : []).filter(u => u && u !== principale)
   const album = principale ? [principale, ...autres] : autres
@@ -208,6 +208,28 @@ function FicheProfil({ profil, onFermer }) {
   const chips = [
     L_SITUATION[profil.situation], L_ENFANTS[profil.enfants], profil.profession, L_TYPEREL[profil.type_relation],
   ].filter(Boolean)
+
+  // Signalement
+  const RAISONS = ['Comportement déplacé', 'Faux profil / arnaque', 'Photos choquantes', 'Propos irrespectueux', 'Autre']
+  const [signalerOuvert, setSignalerOuvert] = useState(false)
+  const [raison, setRaison] = useState('')
+  const [detail, setDetail] = useState('')
+  const [envoiSig, setEnvoiSig] = useState(false)
+  const [sigMsg, setSigMsg] = useState('')
+  const estMoi = moi && profil.id === moi.id
+
+  async function envoyerSignalement() {
+    const objet = [raison, detail.trim()].filter(Boolean).join(' — ')
+    if (!objet) { setSigMsg('Indique la raison du signalement.'); return }
+    setEnvoiSig(true); setSigMsg('')
+    try {
+      const { error } = await supabase.from('signalements').insert({
+        signaleur_id: moi.id, signale_id: profil.id, objet
+      })
+      if (error) throw error
+      setSigMsg('ok')
+    } catch (e) { setSigMsg('Échec de l\'envoi. Réessaie.') } finally { setEnvoiSig(false) }
+  }
 
   return (
     <div className="fdh-fiche">
@@ -250,8 +272,45 @@ function FicheProfil({ profil, onFermer }) {
           {profil.langues?.length > 0 && (
             <div className="fdh-fiche-bloc"><h4>Langues parlées</h4>
               <div className="fdh-chips">{profil.langues.map(v => <span key={v}>{v}</span>)}</div></div>)}
+
+          {!estMoi && (
+            <button className="fdh-signaler" onClick={() => { setSignalerOuvert(true); setSigMsg('') }}>🚩 Signaler ce profil</button>
+          )}
         </div>
       </div>
+
+      {signalerOuvert && (
+        <div className="fdh-modal-fond" onClick={() => setSignalerOuvert(false)}>
+          <div className="fdh-modal" onClick={e => e.stopPropagation()}>
+            <button className="fdh-modal-x" onClick={() => setSignalerOuvert(false)} aria-label="Fermer">✕</button>
+            {sigMsg === 'ok' ? (
+              <div className="fdh-modal-fin">
+                <div className="fdh-modal-emoji">✅</div>
+                <h2>Signalement envoyé</h2>
+                <p>Merci, notre équipe va examiner ce profil. Tu contribues à garder FortyDate sûr.</p>
+                <button className="fdh-btn-rose" style={{ width: '100%' }} onClick={() => setSignalerOuvert(false)}>Fermer</button>
+              </div>
+            ) : (
+              <>
+                <h2 className="fdh-methode-titre">🚩 Signaler {profil.prenom}</h2>
+                <p className="fdh-modal-sous">Pourquoi signales-tu ce profil ?</p>
+                <div className="fdh-echips">
+                  {RAISONS.map(r => (
+                    <button key={r} type="button" className={'fdh-echip' + (raison === r ? ' on' : '')} onClick={() => setRaison(r)}>{r}</button>
+                  ))}
+                </div>
+                <label className="fdh-el">Détails (facultatif)</label>
+                <textarea className="fdh-ein fdh-etext" rows={3} maxLength={300} value={detail}
+                  placeholder="Décris ce qui s'est passé…" onChange={e => setDetail(e.target.value)} />
+                {sigMsg && sigMsg !== 'ok' && <div className="fdh-abo-msg err">{sigMsg}</div>}
+                <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }} disabled={envoiSig} onClick={envoyerSignalement}>
+                  {envoiSig ? 'Envoi…' : 'Envoyer le signalement'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1199,6 +1258,7 @@ function Admin({ onVoir }) {
   const [vue, setVue] = useState('stats') // stats | membres | paiements
   const [membres, setMembres] = useState(null)
   const [paiements, setPaiements] = useState(null)
+  const [signalements, setSignalements] = useState([])
   const [recherche, setRecherche] = useState('')
   const [msg, setMsg] = useState('')
   // Filtres de période (un par onglet), par défaut « Aujourd'hui »
@@ -1246,6 +1306,7 @@ function Admin({ onVoir }) {
         })
         const d = await r.json()
         setPaiements(r.ok ? (d.paiements || []) : [])
+        setSignalements(r.ok ? (d.signalements || []) : [])
       } catch (_) { setPaiements([]) }
     })()
   }, [])
@@ -1265,19 +1326,40 @@ function Admin({ onVoir }) {
     return { total, abonnes, hommes, femmes, bloques, revenus }
   })()
 
+  async function appelAdmin(payload) {
+    const { data: { session } } = await supabase.auth.getSession()
+    const r = await fetch('/api/admin-data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + (session?.access_token || '') },
+      body: JSON.stringify(payload),
+    })
+    const d = await r.json().catch(() => ({}))
+    if (!r.ok) throw new Error(d.error || 'Action refusée')
+    return d
+  }
+
   async function basculerBlocage(m) {
     setMsg('')
     const nouv = !m.bloque
-    const { error } = await supabase.from('profiles').update({ bloque: nouv }).eq('id', m.id)
-    if (error) { setMsg('Échec : ' + error.message); return }
+    try { await appelAdmin({ action: 'bloquer', id: m.id, valeur: nouv }) }
+    catch (e) { setMsg('Échec : ' + e.message); return }
     setMembres(list => list.map(x => x.id === m.id ? { ...x, bloque: nouv } : x))
+    setSignalements(list => list.map(s => s.signale_id === m.id ? { ...s, signale_bloque: nouv } : s))
+  }
+
+  async function basculerBlocageId(id, nouv) {
+    setMsg('')
+    try { await appelAdmin({ action: 'bloquer', id, valeur: nouv }) }
+    catch (e) { setMsg('Échec : ' + e.message); return }
+    setMembres(list => list.map(x => x.id === id ? { ...x, bloque: nouv } : x))
+    setSignalements(list => list.map(s => s.signale_id === id ? { ...s, signale_bloque: nouv } : s))
   }
 
   async function supprimerMembre(m) {
     if (!window.confirm(`Supprimer définitivement le profil de ${m.prenom} ? Cette action est irréversible.`)) return
     setMsg('')
-    const { error } = await supabase.from('profiles').delete().eq('id', m.id)
-    if (error) { setMsg('Échec : ' + error.message); return }
+    try { await appelAdmin({ action: 'supprimer', id: m.id }) }
+    catch (e) { setMsg('Échec : ' + e.message); return }
     setMembres(list => list.filter(x => x.id !== m.id))
   }
 
@@ -1300,6 +1382,7 @@ function Admin({ onVoir }) {
         <button className={'fdh-sous' + (vue === 'stats' ? ' on' : '')} onClick={() => setVue('stats')}>Stats</button>
         <button className={'fdh-sous' + (vue === 'membres' ? ' on' : '')} onClick={() => setVue('membres')}>Membres</button>
         <button className={'fdh-sous' + (vue === 'paiements' ? ' on' : '')} onClick={() => setVue('paiements')}>Paiements</button>
+        <button className={'fdh-sous' + (vue === 'signal' ? ' on' : '')} onClick={() => setVue('signal')}>Signalements {signalements.length > 0 && <span>{signalements.length}</span>}</button>
       </div>
       {msg && <div className="fdh-abo-msg err">{msg}</div>}
 
@@ -1355,6 +1438,31 @@ function Admin({ onVoir }) {
             ))}
             {paiementsFiltres.length === 0 && <p className="fdh-msg">Aucun paiement sur cette période.</p>}
           </div>
+        </div>
+      )}
+
+      {vue === 'signal' && (
+        <div className="fdh-adm-liste">
+          {signalements.map(s => (
+            <div key={s.id} className={'fdh-adm-signal' + (s.signale_bloque ? ' bloque' : '')}>
+              <div className="fdh-sig-haut">
+                <div className="fdh-sig-cible" onClick={() => onVoir(s.signale_id)}>
+                  <div className="fdh-adm-nom">🚩 {s.signale_nom}{s.signale_bloque ? ' 🚫' : ''}</div>
+                  <div className="fdh-adm-sous">Signalé {s.signale_nb_recus} fois</div>
+                </div>
+                <button className={'fdh-adm-btn' + (s.signale_bloque ? '' : ' danger')}
+                  onClick={() => basculerBlocageId(s.signale_id, !s.signale_bloque)}>
+                  {s.signale_bloque ? 'Débloquer' : 'Bloquer'}
+                </button>
+              </div>
+              <div className="fdh-sig-objet">« {s.objet} »</div>
+              <div className="fdh-sig-bas">
+                Par <b>{s.signaleur_nom}</b> · a signalé {s.signaleur_nb_faits} fois
+                {s.cree_at ? ' · ' + new Date(s.cree_at).toLocaleDateString('fr-FR') : ''}
+              </div>
+            </div>
+          ))}
+          {signalements.length === 0 && <p className="fdh-msg">Aucun signalement. 🕊️</p>}
         </div>
       )}
     </div>
@@ -1446,7 +1554,7 @@ export default function Accueil({ onDeconnexion }) {
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #G</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #H</div>
           </div>
         </div>
       )}
@@ -1475,7 +1583,7 @@ export default function Accueil({ onDeconnexion }) {
         ))}
       </nav>
 
-      {fiche && <FicheProfil profil={fiche} onFermer={() => setFiche(null)} />}
+      {fiche && <FicheProfil profil={fiche} moi={moi} onFermer={() => setFiche(null)} />}
       {modalMdp && <MotDePasse onClose={() => setModalMdp(false)} />}
     </div>
   )
@@ -1607,6 +1715,8 @@ function Style() {
       .fdh-btn-orange{width:100%;margin-top:.6rem;background:#FF6A00;color:#fff;border:0;border-radius:12px;padding:1rem;font-size:1.05rem;font-weight:800;cursor:pointer}
       .fdh-btn-orange:hover{background:#e85f00}
       .fdh-btn-texte{display:block;width:100%;margin-top:1rem;background:none;border:0;color:#7A6B74;font-weight:700;cursor:pointer;padding:.4rem}
+      .fdh-signaler{display:block;width:100%;margin-top:1.5rem;background:#fff;border:1.5px solid #f0c9c9;color:#B21F4E;border-radius:12px;padding:.8rem;font-weight:800;font-size:.92rem;cursor:pointer}
+      .fdh-signaler:hover{background:#fdeef2}
       .fdh-methode-titre{font-size:1.35rem;margin:.4rem 0 .2rem;text-align:center;color:#4A1546}
       .fdh-edit{position:fixed;inset:0;max-width:520px;margin:0 auto;background:#FBF4F5;z-index:30;display:flex;flex-direction:column}
       .fdh-edit-scroll{flex:1;overflow-y:auto;padding:1rem 1.1rem calc(2rem + env(safe-area-inset-bottom))}
@@ -1659,6 +1769,12 @@ function Style() {
       .fdh-adm-btn.danger{background:#fdeef2;border-color:#f3c0c0;color:#B21F4E}
       .fdh-adm-paie{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1.5px solid #EEE0E4;border-radius:12px;padding:.7rem .8rem}
       .fdh-adm-date{font-size:.78rem;color:#8a7b82}
+      .fdh-adm-signal{background:#fff;border:1.5px solid #EEE0E4;border-radius:12px;padding:.8rem}
+      .fdh-adm-signal.bloque{background:#fbeaea;border-color:#f3c0c0}
+      .fdh-sig-haut{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+      .fdh-sig-cible{flex:1;min-width:0;cursor:pointer}
+      .fdh-sig-objet{margin:.5rem 0;font-style:italic;color:#5c4f57;font-size:.9rem}
+      .fdh-sig-bas{font-size:.78rem;color:#8a7b82}
       .fdh-section-titre span{background:#D62A5E;color:#fff;font-size:.72rem;padding:.1rem .5rem;border-radius:99px}
       .fdh-jgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem}
       .fdh-jcarte{background:#fff;border:0;border-radius:16px;overflow:hidden;cursor:pointer;box-shadow:0 8px 22px -14px rgba(58,15,56,.4);text-align:center;padding-bottom:.7rem}
