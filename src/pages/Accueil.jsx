@@ -791,8 +791,10 @@ const PLANS = [
 ]
 
 function Abonnement({ moi, onFini, onClose }) {
+  const dejaAbonne = !!moi?.abo_debut_at   // a déjà souscrit au moins une fois
+  const plansDispo = dejaAbonne ? PLANS.filter(p => p.id !== 'bienvenue') : PLANS
   const [tel, setTel] = useState('')
-  const [plan, setPlan] = useState(PLANS[0])
+  const [plan, setPlan] = useState(plansDispo[0])
   const [etape, setEtape] = useState('plans') // plans | methode | numero | attente | ok | echec
   const [operateur, setOperateur] = useState('')
   const [msg, setMsg] = useState('')
@@ -912,7 +914,7 @@ function Abonnement({ moi, onFini, onClose }) {
             <div className="fdh-modal-badge">Sérénité</div>
             <p className="fdh-modal-sous">Débloque : qui t'a vue, qui t'a aimée, tes % d'affinité et les messages illimités.</p>
             <div className="fdh-plans">
-              {PLANS.map(p => (
+              {plansDispo.map(p => (
                 <button key={p.id} type="button"
                   className={'fdh-plan' + (plan.id === p.id ? ' on' : '')}
                   onClick={() => setPlan(p)}>
