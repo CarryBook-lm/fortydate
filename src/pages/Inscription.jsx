@@ -215,7 +215,7 @@ export default function Inscription({ onComplete }) {
                 padding: '.8rem .6rem', border: '1.5px solid #E4D3D8', borderRadius: '12px',
                 background: '#F3E7EA', color: '#4A1546', fontWeight: 800, whiteSpace: 'nowrap'
               }}>{f.indicatif || '—'}</div>
-              <input className="fd-in" type="tel" value={f.telephone} placeholder="6 12 34 56 78"
+              <input className="fd-in" type="tel" value={f.telephone} placeholder=""
                 onChange={e => set('telephone', e.target.value)} style={{ flex: 1 }} />
             </div>
 
