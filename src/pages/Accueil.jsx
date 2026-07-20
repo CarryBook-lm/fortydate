@@ -1554,7 +1554,7 @@ export default function Accueil({ onDeconnexion }) {
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #K</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #L</div>
           </div>
         </div>
       )}
@@ -1827,7 +1827,7 @@ function Style() {
       .fdh-bulle-wrap.lui{align-self:flex-start}
       .fdh-reply-ic{position:absolute;left:-26px;top:50%;transform:translateY(-50%);color:#D62A5E;font-size:1.1rem}
       .fdh-bulle{padding:.6rem .9rem;border-radius:16px;font-size:.95rem;line-height:1.4;word-wrap:break-word;user-select:none}
-      .fdh-bulle.moi{background:#D62A5E;color:#fff;border-bottom-right-radius:5px}
+      .fdh-bulle.moi{background:#4A1546;color:#fff;border-bottom-right-radius:5px}
       .fdh-bulle.lui{background:#fff;color:#3A0F38;border-bottom-left-radius:5px;box-shadow:0 2px 8px -4px rgba(58,15,56,.3)}
       .fdh-cite{border-left:3px solid rgba(255,255,255,.6);padding:.2rem .5rem;margin-bottom:.35rem;font-size:.82rem;opacity:.85;
         background:rgba(255,255,255,.15);border-radius:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1840,9 +1840,9 @@ function Style() {
       .fdh-emojis button:hover{background:#F3E7EA}
       .fdh-chat-saisie{display:flex;gap:.5rem;padding:.6rem 0 .2rem;border-top:1px solid #EEE0E4;align-items:center}
       .fdh-emo-btn{background:none;border:0;font-size:1.4rem;cursor:pointer;flex:0 0 auto}
-      .fdh-chat-saisie input{flex:1;padding:.75rem 1rem;border:1.5px solid #E4D3D8;border-radius:99px;font-size:1rem;outline:none}
+      .fdh-chat-saisie input{flex:1;min-width:0;padding:.75rem 1rem;border:1.5px solid #E4D3D8;border-radius:99px;font-size:1rem;outline:none}
       .fdh-chat-saisie input:focus{border-color:#D62A5E}
-      .fdh-envoi{width:46px;height:46px;border:0;border-radius:50%;background:#D62A5E;color:#fff;font-size:1.1rem;cursor:pointer;flex:0 0 auto}
+      .fdh-envoi{width:46px;height:46px;border:0;border-radius:50%;background:#4A1546;color:#fff;font-size:1.1rem;cursor:pointer;flex:0 0 auto}
       .fdh-envoi:disabled{opacity:.5}
 
       /* Fiche profil */
