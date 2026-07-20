@@ -879,6 +879,59 @@ function Abonnement({ moi, onFini, onClose }) {
   )
 }
 
+/* ---------------- Changer mon mot de passe ---------------- */
+function MotDePasse({ onClose }) {
+  const [mdp, setMdp] = useState('')
+  const [mdp2, setMdp2] = useState('')
+  const [voir, setVoir] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [ok, setOk] = useState(false)
+  const [envoi, setEnvoi] = useState(false)
+
+  async function changer() {
+    setMsg('')
+    if (mdp.length < 6) return setMsg('6 caractères minimum.')
+    if (mdp !== mdp2) return setMsg('Les deux mots de passe ne correspondent pas.')
+    setEnvoi(true)
+    const { error } = await supabase.auth.updateUser({ password: mdp })
+    setEnvoi(false)
+    if (error) setMsg(error.message || 'Erreur. Réessaie.')
+    else { setOk(true) }
+  }
+
+  return (
+    <div className="fdh-modal-fond" onClick={onClose}>
+      <div className="fdh-modal" onClick={e => e.stopPropagation()}>
+        <button className="fdh-modal-x" onClick={onClose}>✕</button>
+        {ok ? (
+          <div className="fdh-modal-fin">
+            <div className="fdh-modal-emoji">🔒</div>
+            <h2>Mot de passe modifié</h2>
+            <p>Ton nouveau mot de passe est enregistré.</p>
+            <button className="fdh-btn-rose" style={{ width: '100%' }} onClick={onClose}>Terminé</button>
+          </div>
+        ) : (
+          <>
+            <h2 className="fdh-quest-titre">Changer mon mot de passe</h2>
+            <label className="fdh-l">Nouveau mot de passe</label>
+            <div className="fdh-pass">
+              <input className="fdh-in" type={voir ? 'text' : 'password'} value={mdp}
+                onChange={e => setMdp(e.target.value)} placeholder="6 caractères min." />
+              <button type="button" className="fdh-eye" onClick={() => setVoir(v => !v)}>{voir ? '🙈' : '👁️'}</button>
+            </div>
+            <label className="fdh-l">Confirme le mot de passe</label>
+            <input className="fdh-in" type={voir ? 'text' : 'password'} value={mdp2}
+              onChange={e => setMdp2(e.target.value)} placeholder="Retape le même" />
+            {msg && <div className="fdh-abo-msg err">{msg}</div>}
+            <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }}
+              onClick={changer} disabled={envoi}>{envoi ? 'Enregistrement…' : 'Enregistrer'}</button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ============================================================ */
 export default function Accueil({ onDeconnexion }) {
   const [onglet, setOnglet] = useState('proximite')
@@ -887,6 +940,7 @@ export default function Accueil({ onDeconnexion }) {
   const [conversationAvec, setConversationAvec] = useState(null)
   const [overlay, setOverlay] = useState(null)  // 'profil' | 'questionnaire' | null
   const [menuOuvert, setMenuOuvert] = useState(false)
+  const [modalMdp, setModalMdp] = useState(false)
   const [fiche, setFiche] = useState(null)  // profil consulté
 
   async function voirProfil(id) {
@@ -943,6 +997,7 @@ export default function Accueil({ onDeconnexion }) {
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('profil')}>👤 Mon profil</button>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('questionnaire')}>📝 Questionnaire d'affinités</button>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Abonnement : Passez à Sérénité</button>
+            <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
           </div>
         </div>
@@ -971,6 +1026,7 @@ export default function Accueil({ onDeconnexion }) {
       </nav>
 
       {fiche && <FicheProfil profil={fiche} onFermer={() => setFiche(null)} />}
+      {modalMdp && <MotDePasse onClose={() => setModalMdp(false)} />}
     </div>
   )
 }
