@@ -1330,9 +1330,9 @@ function Style() {
       .fdh-carte{border:0;padding:0;text-align:left;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 18px -12px rgba(58,15,56,.4);cursor:pointer}
       .fdh-carte-photo{width:100%;aspect-ratio:1 / 1.414;background:#EDE0E4;position:relative}
       .fdh-pct-badge{position:absolute;top:.5rem;right:.5rem;color:#fff;font-weight:800;font-size:.85rem;padding:.2rem .55rem;border-radius:99px;box-shadow:0 4px 10px -4px rgba(0,0,0,.4)}
-      .fdh-grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem}
+      .fdh-grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem;align-items:start}
       .fdh-carte-b{display:flex;flex-direction:column}
-      .fdh-carte-b .fdh-carte-photo{border:0;padding:0;cursor:pointer;width:100%}
+      .fdh-carte-b .fdh-carte-photo{border:0;padding:0;cursor:pointer;width:100%;aspect-ratio:1 / 1}
       .fdh-2btn{display:flex;gap:.4rem;padding:.15rem .5rem .5rem}
       .fdh-2btn button{flex:1;border-radius:9px;font-size:.8rem;font-weight:800;padding:.4rem 0;cursor:pointer;border:1.5px solid #E4D3D8}
       .fdh-2btn .b-profil{background:#fff;color:#4A1546}
