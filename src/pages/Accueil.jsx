@@ -794,6 +794,7 @@ function Abonnement({ moi, onFini, onClose }) {
   const [tel, setTel] = useState(moi?.telephone || '')
   const [plan, setPlan] = useState(PLANS[0])
   const [etape, setEtape] = useState('plans') // plans | methode | numero | attente | ok | echec
+  const [operateur, setOperateur] = useState('')
   const [msg, setMsg] = useState('')
   const [idx, setIdx] = useState(0)
 
@@ -884,8 +885,8 @@ function Abonnement({ moi, onFini, onClose }) {
             <div className="fdh-modal-badge">{plan.nom} · {plan.prix.toLocaleString('fr-FR')} F</div>
             <h2 className="fdh-methode-titre">Choisis ta méthode</h2>
             <p className="fdh-modal-sous">Avec quel moyen veux-tu payer ?</p>
-            <button className="fdh-btn-mtn" onClick={() => { setMsg(''); setEtape('numero') }}>📱 MTN Mobile Money</button>
-            <button className="fdh-btn-orange" onClick={() => { setMsg(''); setEtape('numero') }}>📱 Orange Money</button>
+            <button className="fdh-btn-mtn" onClick={() => { setMsg(''); setOperateur('MTN'); setEtape('numero') }}>📱 MTN Mobile Money</button>
+            <button className="fdh-btn-orange" onClick={() => { setMsg(''); setOperateur('ORANGE'); setEtape('numero') }}>📱 Orange Money</button>
             {!estCameroun && (
               <button className="fdh-btn-outline" style={{ width: '100%', marginTop: '.6rem' }} onClick={payerChariow}>💳 Carte bancaire / autre pays</button>
             )}
@@ -894,18 +895,17 @@ function Abonnement({ moi, onFini, onClose }) {
           </>
 
         ) : etape === 'numero' ? (
-          <>
-            <div className="fdh-modal-badge">{plan.nom} · {plan.prix.toLocaleString('fr-FR')} F</div>
-            <h2 className="fdh-methode-titre">Ton numéro Mobile Money</h2>
-            <p className="fdh-modal-sous">Entre le numéro (MTN ou Orange) qui va payer.</p>
-            <input className="fdh-in" value={tel} placeholder="6XXXXXXXX" inputMode="numeric"
+          <div className="fdh-numero">
+            <h2 className="fdh-numero-titre">Entre ton numéro {operateur}</h2>
+            <p className="fdh-numero-sous">9 chiffres, sans +237</p>
+            <input className="fdh-numero-in" value={tel} placeholder="6XXXXXXXX" inputMode="numeric"
               onChange={e => setTel(e.target.value)} />
             {msg && <div className="fdh-abo-msg err">{msg}</div>}
             <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }} onClick={payer}>
-              Payer {plan.prix.toLocaleString('fr-FR')} FCFA
+              💎 Payer {plan.prix.toLocaleString('fr-FR')} FCFA
             </button>
             <button className="fdh-btn-texte" onClick={() => { setMsg(''); setEtape('methode') }}>← Retour</button>
-          </>
+          </div>
 
         ) : (
           <>
@@ -1220,6 +1220,12 @@ function Style() {
       .fdh-btn-orange:hover{background:#e85f00}
       .fdh-btn-texte{display:block;width:100%;margin-top:1rem;background:none;border:0;color:#7A6B74;font-weight:700;cursor:pointer;padding:.4rem}
       .fdh-methode-titre{font-size:1.35rem;margin:.4rem 0 .2rem;text-align:center;color:#4A1546}
+      .fdh-numero{text-align:center;padding:.5rem 0}
+      .fdh-numero-titre{font-size:1.5rem;margin:.6rem 0 .3rem;color:#4A1546}
+      .fdh-numero-sous{color:#7A6B74;font-size:.95rem;margin:0 0 1.3rem}
+      .fdh-numero-in{width:100%;box-sizing:border-box;padding:1.1rem;border:1.5px solid #E4D3D8;border-radius:14px;
+        font-size:1.3rem;text-align:center;letter-spacing:2px;background:#faf6f7;color:#3A0F38}
+      .fdh-numero-in:focus{outline:none;border-color:#D62A5E;background:#fff}
       .fdh-attente-emoji{font-size:3rem;text-align:center;margin-bottom:.4rem}
       .fdh-attente-alerte{background:#fdeef2;color:#B21F4E;border:1.5px solid #f5c2d3;border-radius:12px;padding:.9rem;text-align:center;font-weight:800;margin:.6rem 0}
       .fdh-attente-note{text-align:center;color:#5c4f57;font-size:.92rem;line-height:1.5;margin:.4rem 0}
