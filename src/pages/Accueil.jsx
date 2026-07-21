@@ -1608,7 +1608,7 @@ export default function Accueil({ onDeconnexion }) {
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #O</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #P</div>
           </div>
         </div>
       )}
@@ -1691,7 +1691,7 @@ function Style() {
       .fdh-2btn .b-profil:hover{background:#F3E7EA}
       .fdh-2btn .b-disc{background:#D62A5E;color:#fff;border-color:#D62A5E}
       .fdh-2btn .b-disc:hover{background:#B21F4E}
-      .fdh-carte-photo .fdh-photo{width:100%;height:100%;object-fit:cover}
+      .fdh-carte-photo .fdh-photo{width:100%;height:100%;object-fit:contain}
       .fdh-carte-photo .fdh-vide{width:100%;height:100%;font-size:3rem}
       .fdh-photo{width:100%;object-fit:cover;display:block;background:#EDE0E4}
       .fdh-vide{display:grid;place-items:center;font-size:2.4rem;font-weight:800;color:#fff;background:linear-gradient(150deg,#7A2233,#D62A5E)}
