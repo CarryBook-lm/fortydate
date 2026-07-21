@@ -1503,6 +1503,35 @@ function Admin({ onVoir }) {
 }
 
 /* ============================================================ */
+function Manuel({ onClose }) {
+  const sections = [
+    ['👤', 'Complète ton profil', "Ajoute une belle photo et quelques mots sur toi via le menu ☰ → Mon profil. Un profil complet et sincère inspire confiance et attire les bonnes personnes."],
+    ['📍', 'À proximité', "Découvre les membres proches de chez toi. Appuie sur une carte pour ouvrir un profil et en savoir plus."],
+    ['💑', 'Rencontres', "Fais défiler les profils un par un : 💚 pour aimer, ✖️ pour passer. Prends ton temps, c'est simple."],
+    ['❤️', "J'aime", "Ici tu retrouves « Ils t'ont aimée » (les personnes qui ont flashé sur toi) et « Tes matchs ». Un match, c'est quand vous vous êtes aimés tous les deux."],
+    ['💬', 'Messages', "Discute avec tes matchs. La pastille rouge t'indique les messages non lus, conversation par conversation."],
+    ['✨', 'Affinités', "Réponds au petit questionnaire : l'appli calcule ensuite votre pourcentage de compatibilité avec les autres membres."],
+    ['⭐', 'Sérénité', "L'abonnement débloque le meilleur : voir qui t'a aimée, les visites de ton profil, le pourcentage d'affinité et les messages illimités."],
+    ['🛡️', 'Sécurité', "Un profil te met mal à l'aise ? Tu peux le signaler ou le bloquer depuis sa fiche. Ne partage jamais tes coordonnées bancaires ni d'argent avec un inconnu."],
+  ]
+  return (
+    <div className="fdh-modal-fond" onClick={onClose}>
+      <div className="fdh-modal" onClick={e => e.stopPropagation()}>
+        <button className="fdh-modal-x" onClick={onClose}>✕</button>
+        <h2 className="fdh-quest-titre">Comment utiliser FortyDate</h2>
+        <p className="fdh-manuel-intro">Bienvenue ! Voici l'essentiel pour faire de belles rencontres, en toute sérénité.</p>
+        {sections.map(([emoji, titre, texte]) => (
+          <div key={titre} className="fdh-manuel-bloc">
+            <div className="fdh-manuel-titre"><span>{emoji}</span>{titre}</div>
+            <p className="fdh-manuel-txt">{texte}</p>
+          </div>
+        ))}
+        <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '.8rem' }} onClick={onClose}>J'ai compris</button>
+      </div>
+    </div>
+  )
+}
+
 export default function Accueil({ onDeconnexion }) {
   const [onglet, setOnglet] = useState(() => {
     try { return localStorage.getItem('fd_onglet') || 'rencontres' } catch (_) { return 'rencontres' }
@@ -1515,6 +1544,7 @@ export default function Accueil({ onDeconnexion }) {
   const [overlay, setOverlay] = useState(null)  // 'profil' | 'questionnaire' | null
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [modalMdp, setModalMdp] = useState(false)
+  const [manuelOuvert, setManuelOuvert] = useState(false)
   const [fiche, setFiche] = useState(null)  // profil consulté
   const [nbMsgNonLus, setNbMsgNonLus] = useState(0)
   const [nbNouvJaime, setNbNouvJaime] = useState(0)
@@ -1622,9 +1652,10 @@ export default function Accueil({ onDeconnexion }) {
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('questionnaire')}>📝 Questionnaire d'affinités</button>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Abonnement : Passez à Sérénité</button>
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
+            <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setManuelOuvert(true) }}>📖 Comment utiliser FortyDate</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #U</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #V</div>
           </div>
         </div>
       )}
@@ -1659,6 +1690,7 @@ export default function Accueil({ onDeconnexion }) {
 
       {fiche && <FicheProfil profil={fiche} moi={moi} onFermer={() => setFiche(null)} />}
       {modalMdp && <MotDePasse onClose={() => setModalMdp(false)} />}
+      {manuelOuvert && <Manuel onClose={() => setManuelOuvert(false)} />}
     </div>
   )
 }
@@ -1955,6 +1987,11 @@ function Style() {
       .fdh-modal-fond{position:fixed;inset:0;background:rgba(36,10,42,.75);display:grid;place-items:center;z-index:80;padding:1.2rem}
       .fdh-modal{background:#fff;border-radius:22px;padding:1.6rem 1.4rem;max-width:420px;width:100%;position:relative;max-height:92vh;overflow-y:auto}
       .fdh-modal-x{position:absolute;top:.7rem;right:.9rem;background:none;border:0;font-size:1.2rem;color:#9a8b92;cursor:pointer}
+      .fdh-manuel-intro{color:#7A6B74;font-size:.9rem;margin:.1rem 0 1rem;line-height:1.45}
+      .fdh-manuel-bloc{padding:.65rem 0;border-bottom:1px solid #F1E7EA}
+      .fdh-manuel-titre{display:flex;align-items:center;gap:.5rem;font-weight:800;color:#3A0F38;font-size:.98rem}
+      .fdh-manuel-titre span{font-size:1.15rem}
+      .fdh-manuel-txt{margin:.28rem 0 0;color:#6b5c64;font-size:.85rem;line-height:1.48}
       .fdh-modal-badge{display:inline-block;background:#C69A4E;color:#3A0F38;font-weight:800;font-size:.78rem;padding:.25rem .9rem;border-radius:99px;text-transform:uppercase;letter-spacing:.05em}
       .fdh-modal-sous{color:#7A6B74;font-size:.9rem;margin:.6rem 0 1rem;line-height:1.4}
       .fdh-plans{display:flex;gap:.5rem;margin-bottom:1rem}
