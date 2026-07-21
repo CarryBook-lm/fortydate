@@ -1503,6 +1503,36 @@ function Admin({ onVoir }) {
 }
 
 /* ============================================================ */
+function Regles({ onClose }) {
+  const regles = [
+    ['🤝', 'Respect avant tout', "Courtoisie et bienveillance avec chacun. Insultes, harcèlement, propos haineux ou discriminatoires sont interdits."],
+    ['🪪', 'Profils authentiques', "Utilise tes vraies photos et de vraies informations. Les faux profils et les usurpations d'identité sont supprimés."],
+    ['🔞', 'Réservé aux adultes 40+', "FortyDate est réservé aux personnes de 40 ans et plus. Aucun contenu impliquant des mineurs n'est toléré."],
+    ['🚫', 'Pas de contenu choquant', "Interdit : nudité, contenu sexuel explicite, violence, ou tout contenu illégal."],
+    ['💰', "Jamais d'argent", "Ne demande jamais d'argent et n'en envoie jamais. Méfie-toi de toute personne qui te réclame de l'argent ou tes coordonnées bancaires : c'est une arnaque."],
+    ['📵', 'Pas de spam ni pub', "Interdit d'utiliser FortyDate pour de la publicité, du démarchage ou envoyer des messages en masse."],
+    ['🔒', 'Protège ta vie privée', "Ne partage pas trop vite tes informations personnelles. Ta sécurité passe avant tout."],
+    ['🛡️', 'Signale les abus', "Un comportement déplacé ? Signale ou bloque le profil depuis sa fiche. Nos équipes examinent chaque signalement."],
+    ['⚖️', 'En cas de non-respect', "Le non-respect de ces règles peut entraîner un avertissement, une suspension ou la suppression définitive du compte."],
+  ]
+  return (
+    <div className="fdh-modal-fond" onClick={onClose}>
+      <div className="fdh-modal" onClick={e => e.stopPropagation()}>
+        <button className="fdh-modal-x" onClick={onClose}>✕</button>
+        <h2 className="fdh-quest-titre">Règles du site</h2>
+        <p className="fdh-manuel-intro">Pour que FortyDate reste un espace sûr et agréable, chaque membre s'engage à respecter ces règles.</p>
+        {regles.map(([emoji, titre, texte]) => (
+          <div key={titre} className="fdh-manuel-bloc">
+            <div className="fdh-manuel-titre"><span>{emoji}</span>{titre}</div>
+            <p className="fdh-manuel-txt">{texte}</p>
+          </div>
+        ))}
+        <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '.8rem' }} onClick={onClose}>J'accepte ces règles</button>
+      </div>
+    </div>
+  )
+}
+
 function Manuel({ onClose }) {
   const sections = [
     ['👤', 'Complète ton profil', "Ajoute une belle photo et quelques mots sur toi via le menu ☰ → Mon profil. Un profil complet et sincère inspire confiance et attire les bonnes personnes."],
@@ -1545,6 +1575,7 @@ export default function Accueil({ onDeconnexion }) {
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [modalMdp, setModalMdp] = useState(false)
   const [manuelOuvert, setManuelOuvert] = useState(false)
+  const [reglesOuvert, setReglesOuvert] = useState(false)
   const [fiche, setFiche] = useState(null)  // profil consulté
   const [nbMsgNonLus, setNbMsgNonLus] = useState(0)
   const [nbNouvJaime, setNbNouvJaime] = useState(0)
@@ -1653,9 +1684,10 @@ export default function Accueil({ onDeconnexion }) {
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Abonnement : Passez à Sérénité</button>
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setManuelOuvert(true) }}>📖 Comment utiliser FortyDate</button>
+            <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setReglesOuvert(true) }}>📜 Règles du site</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #V</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #W</div>
           </div>
         </div>
       )}
@@ -1691,6 +1723,7 @@ export default function Accueil({ onDeconnexion }) {
       {fiche && <FicheProfil profil={fiche} moi={moi} onFermer={() => setFiche(null)} />}
       {modalMdp && <MotDePasse onClose={() => setModalMdp(false)} />}
       {manuelOuvert && <Manuel onClose={() => setManuelOuvert(false)} />}
+      {reglesOuvert && <Regles onClose={() => setReglesOuvert(false)} />}
     </div>
   )
 }
