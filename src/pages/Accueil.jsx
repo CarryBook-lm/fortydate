@@ -7,6 +7,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { uploadPhotoOptimisee } from '../lib/photo'
+import { subscribeToPush } from '../lib/push'
 
 /* ---------------- Questionnaire d'affinités (30 questions) ---------------- */
 // nominal:true  -> il faut la même réponse (0 ou 1)
@@ -1687,8 +1688,12 @@ export default function Accueil({ onDeconnexion }) {
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setManuelOuvert(true) }}>📖 Comment utiliser FortyDate</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setReglesOuvert(true) }}>📜 Règles du site</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
+            <button className="fdh-drawer-item" onClick={async () => {
+              const res = await subscribeToPush(moi?.id)
+              alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
+            }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #X</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 21/07 · #Y</div>
           </div>
         </div>
       )}
