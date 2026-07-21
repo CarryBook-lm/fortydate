@@ -877,7 +877,7 @@ function Bulle({ m, moi, msgs, onRepondre }) {
   )
 }
 
-function Chat({ moi, contact, onRetour }) {
+function Chat({ moi, contact, onRetour, onLu }) {
   const [msgs, setMsgs] = useState([])
   const [texte, setTexte] = useState('')
   const [envoi, setEnvoi] = useState(false)
@@ -892,10 +892,19 @@ function Chat({ moi, contact, onRetour }) {
         .or(`and(expediteur.eq.${moi.id},destinataire.eq.${contact.id}),and(expediteur.eq.${contact.id},destinataire.eq.${moi.id})`)
         .order('cree_at', { ascending: true })
       if (!annule) setMsgs(data || [])
+      // Marquer comme lus les messages reçus de ce contact
+      try {
+        await supabase.from('messages').update({ lu: true })
+          .eq('destinataire', moi.id).eq('expediteur', contact.id).eq('lu', false)
+        if (onLu) onLu()
+      } catch (_) {}
     })()
     const canal = supabase.channel('chat-' + contact.id)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `expediteur=eq.${contact.id}` },
-        payload => { if (payload.new.destinataire === moi.id) setMsgs(m => [...m, payload.new]) })
+        payload => { if (payload.new.destinataire === moi.id) {
+          setMsgs(m => [...m, payload.new])
+          supabase.from('messages').update({ lu: true }).eq('id', payload.new.id).then(() => onLu && onLu())
+        } })
       .subscribe()
     return () => { annule = true; supabase.removeChannel(canal) }
   }, [moi.id, contact.id])
@@ -948,7 +957,7 @@ function Chat({ moi, contact, onRetour }) {
     </div>
   )
 }
-function Messages({ moi, ouvrir, setOuvrir }) {
+function Messages({ moi, ouvrir, setOuvrir, onLu }) {
   const [matchs, setMatchs] = useState(null)
   const [err, setErr] = useState('')
   useEffect(() => {
@@ -961,7 +970,7 @@ function Messages({ moi, ouvrir, setOuvrir }) {
     })()
     return () => { annule = true }
   }, [moi, ouvrir])
-  if (ouvrir) return <Chat moi={moi} contact={ouvrir} onRetour={() => setOuvrir(null)} />
+  if (ouvrir) return <Chat moi={moi} contact={ouvrir} onRetour={() => setOuvrir(null)} onLu={onLu} />
   if (err) return <div className="fdh-msg">{err}</div>
   if (matchs === null) return <div className="fdh-msg">Chargement…</div>
   if (matchs.length === 0)
@@ -1491,6 +1500,8 @@ export default function Accueil({ onDeconnexion }) {
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [modalMdp, setModalMdp] = useState(false)
   const [fiche, setFiche] = useState(null)  // profil consulté
+  const [nbMsgNonLus, setNbMsgNonLus] = useState(0)
+  const [nbNouvJaime, setNbNouvJaime] = useState(0)
 
   async function voirProfil(id) {
     const { data } = await supabase.from('profiles').select('*').eq('id', id).single()
@@ -1502,6 +1513,33 @@ export default function Accueil({ onDeconnexion }) {
     }
   }
   const ouvrirDiscussion = (p) => { setConversationAvec(p); setOnglet('messages') }
+
+  // ---- Badges de notification (messages non lus + nouveaux j'aime) ----
+  async function rafraichirBadges() {
+    if (!moi?.id) return
+    try {
+      const { count } = await supabase.from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('destinataire', moi.id).eq('lu', false)
+      setNbMsgNonLus(count || 0)
+    } catch (_) {}
+    try {
+      const { data } = await supabase.rpc('qui_m_a_aime')
+      const total = Array.isArray(data) ? data.length : 0
+      const vus = parseInt(localStorage.getItem('fd_jaime_vus') || '0', 10)
+      setNbNouvJaime(Math.max(0, total - vus))
+    } catch (_) {}
+  }
+
+  useEffect(() => {
+    if (!moi?.id) return
+    rafraichirBadges()
+    const canal = supabase.channel('badges-' + moi.id)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `destinataire=eq.${moi.id}` },
+        () => setNbMsgNonLus(n => n + 1))
+      .subscribe()
+    return () => { supabase.removeChannel(canal) }
+  }, [moi?.id]) // eslint-disable-line
 
   async function rechargerProfil() {
     const { data: { user } } = await supabase.auth.getUser()
@@ -1536,7 +1574,15 @@ export default function Accueil({ onDeconnexion }) {
 
   const titres = { proximite: 'À proximité', rencontres: 'Rencontre', jaime: "J'aime", messages: 'Messages', match: 'Affinités', visites: 'Visites' }
   const titreOverlay = { profil: 'Mon profil', questionnaire: 'Affinités', abonnement: 'Sérénité' }
-  const allerOnglet = (id) => { setOverlay(null); setMenuOuvert(false); setOnglet(id) }
+  const allerOnglet = (id) => {
+    setOverlay(null); setMenuOuvert(false); setOnglet(id)
+    if (id === 'jaime') {
+      setNbNouvJaime(0)
+      supabase.rpc('qui_m_a_aime').then(({ data }) => {
+        localStorage.setItem('fd_jaime_vus', String(Array.isArray(data) ? data.length : 0))
+      }).catch(() => {})
+    }
+  }
   const ouvrirOverlay = (v) => { setOverlay(v); setMenuOuvert(false) }
 
   return (
@@ -1562,7 +1608,7 @@ export default function Accueil({ onDeconnexion }) {
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #N</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #O</div>
           </div>
         </div>
       )}
@@ -1575,7 +1621,7 @@ export default function Accueil({ onDeconnexion }) {
         {!overlay && onglet === 'proximite' && <Proximite moi={moi} onVoir={voirProfil} />}
         {!overlay && onglet === 'rencontres' && <Rencontres moi={moi} />}
         {!overlay && onglet === 'jaime' && <Jaime moi={moi} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} />}
-        {!overlay && onglet === 'messages' && <Messages moi={moi} ouvrir={conversationAvec} setOuvrir={setConversationAvec} />}
+        {!overlay && onglet === 'messages' && <Messages moi={moi} ouvrir={conversationAvec} setOuvrir={setConversationAvec} onLu={rafraichirBadges} />}
         {!overlay && onglet === 'match' && <MatchAffinites moi={moi} mesReponses={mesReponses} onFaireQuestionnaire={() => ouvrirOverlay('questionnaire')} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} />}
         {!overlay && onglet === 'visites' && <Visites moi={moi} onVoir={voirProfil} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
         {!overlay && onglet === 'admin' && estAdmin && <Admin onVoir={voirProfil} />}
@@ -1586,7 +1632,11 @@ export default function Accueil({ onDeconnexion }) {
           ['messages', '💬', 'Messages'], ['match', '✨', 'Affinités'],
           estAdmin ? ['admin', '🛡️', 'S.Admin'] : ['visites', '👀', 'Visites']].map(([id, emoji, label]) => (
           <button key={id} className={'fdh-tab' + (!overlay && onglet === id ? ' on' : '')} onClick={() => allerOnglet(id)}>
-            <span className="fdh-tab-emoji">{emoji}</span><span className="fdh-tab-label">{label}</span>
+            <span className="fdh-tab-emoji">{emoji}
+              {id === 'messages' && nbMsgNonLus > 0 && <span className="fdh-badge">{nbMsgNonLus > 9 ? '9+' : nbMsgNonLus}</span>}
+              {id === 'jaime' && nbNouvJaime > 0 && <span className="fdh-badge">{nbNouvJaime > 9 ? '9+' : nbNouvJaime}</span>}
+            </span>
+            <span className="fdh-tab-label">{label}</span>
           </button>
         ))}
       </nav>
@@ -1904,7 +1954,10 @@ function Style() {
       /* Nav */
       .fdh-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;background:#fff;border-top:1px solid #EEE0E4;display:flex;z-index:20;padding-bottom:env(safe-area-inset-bottom)}
       .fdh-tab{flex:1;border:0;background:none;cursor:pointer;padding:.5rem .1rem .6rem;display:flex;flex-direction:column;align-items:center;gap:.15rem;color:#9a8b92}
-      .fdh-tab-emoji{font-size:1.2rem;filter:grayscale(.4);opacity:.7;transition:.15s}
+      .fdh-tab-emoji{font-size:1.2rem;filter:grayscale(.4);opacity:.7;transition:.15s;position:relative}
+      .fdh-badge{position:absolute;top:-6px;right:-10px;min-width:16px;height:16px;padding:0 4px;
+        background:#D62A5E;color:#fff;font-size:.62rem;font-weight:800;line-height:16px;text-align:center;
+        border-radius:99px;box-shadow:0 0 0 2px #fff;filter:none;opacity:1}
       .fdh-tab-label{font-size:.6rem;font-weight:700}
       .fdh-tab.on{color:#D62A5E}
       .fdh-tab.on .fdh-tab-emoji{filter:none;opacity:1;transform:translateY(-1px)}
