@@ -1651,6 +1651,7 @@ export default function Accueil({ onDeconnexion }) {
 
   const titres = { proximite: 'À proximité', rencontres: 'Rencontre', jaime: "J'aime", messages: 'Messages', match: 'Affinités', visites: 'Visites' }
   const titreOverlay = { profil: 'Mon profil', questionnaire: 'Affinités', abonnement: 'Sérénité' }
+  const abonne = estAbonne(moi)
   const allerOnglet = (id) => {
     setOverlay(null); setMenuOuvert(false); setOnglet(id)
     if (id === 'jaime') {
@@ -1687,12 +1688,12 @@ export default function Accueil({ onDeconnexion }) {
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setReglesOuvert(true) }}>📜 Règles du site</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #W</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #X</div>
           </div>
         </div>
       )}
 
-      <main className="fdh-main">
+      <main className={'fdh-main' + (!overlay && moi && !abonne ? ' avec-cta' : '')}>
         {overlay === 'profil' && <MonProfil moi={moi} onDeconnexion={onDeconnexion} onMaj={setMoi} />}
         {overlay === 'questionnaire' && <Questionnaire moi={moi} reponsesInit={mesReponses}
           onFini={(r) => { setMesReponses(r); setOverlay(null); setOnglet('match') }} />}
@@ -1705,6 +1706,13 @@ export default function Accueil({ onDeconnexion }) {
         {!overlay && onglet === 'visites' && <Visites moi={moi} onVoir={voirProfil} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
         {!overlay && onglet === 'admin' && estAdmin && <Admin onVoir={voirProfil} />}
       </main>
+
+      {!overlay && moi && !abonne && (
+        <button className="fdh-cta-abo" onClick={() => ouvrirOverlay('abonnement')}>
+          <span className="fdh-cta-txt">✨ Profite à fond de FortyDate</span>
+          <span className="fdh-cta-prix">1000F · Mobile Money / carte</span>
+        </button>
+      )}
 
       <nav className="fdh-nav">
         {[['proximite', '📍', 'Proximité'], ['jaime', '❤️', "J'aime"], ['rencontres', '💑', 'Rencontre'],
@@ -1736,6 +1744,14 @@ function Style() {
       .fdh-app{min-height:100vh;background:#FBF4F5;font-family:system-ui,'Segoe UI',sans-serif;
         color:#3A0F38;display:flex;flex-direction:column;width:100%;max-width:480px;margin:0 auto;position:relative}
       .fdh-main{flex:1;width:100%;max-width:480px;margin:0 auto;box-sizing:border-box;padding:1rem 1rem calc(72px + 1rem + env(safe-area-inset-bottom));overflow-y:auto}
+      .fdh-main.avec-cta{padding-bottom:calc(120px + env(safe-area-inset-bottom))}
+      .fdh-cta-abo{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(52px + env(safe-area-inset-bottom));
+        z-index:19;width:100%;max-width:520px;border:0;cursor:pointer;
+        background:linear-gradient(90deg,#D62A5E,#4A1546);color:#fff;
+        padding:.62rem 1rem;display:flex;align-items:center;justify-content:center;gap:.6rem;flex-wrap:wrap;
+        box-shadow:0 -8px 20px -10px rgba(74,21,70,.45)}
+      .fdh-cta-txt{font-weight:800;font-size:.9rem}
+      .fdh-cta-prix{font-weight:700;font-size:.72rem;background:rgba(255,255,255,.2);padding:.2rem .55rem;border-radius:99px;white-space:nowrap}
       .fdh-header{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #EEE0E4;
         padding:.9rem 1.1rem;padding-top:calc(.9rem + env(safe-area-inset-top));display:flex;align-items:center;gap:.7rem}
       .fdh-burger{background:none;border:0;font-size:1.4rem;cursor:pointer;color:#4A1546;line-height:1}
