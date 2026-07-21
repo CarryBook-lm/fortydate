@@ -62,18 +62,3 @@ export async function uploadPhotoOptimisee(file, userId) {
   const { data } = supabase.storage.from('avatars').getPublicUrl(nom)
   return data.publicUrl
 }
-
-// ------------------------------------------------------------
-// Renvoie une version MINIATURE de l'image, redimensionnée à la volée
-// par le CDN d'images de Supabase. Utilisée dans les listes/cartes de
-// profils : on télécharge une petite image au lieu de la grande
-// -> grosse économie de bande passante.
-// Largeur 0 ou URL non-Supabase => on renvoie l'original tel quel.
-// ------------------------------------------------------------
-export function miniature(url, largeur = 400) {
-  if (!url || !largeur || typeof url !== 'string') return url
-  if (!url.includes('/storage/v1/object/public/')) return url
-  const rendu = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
-  const sep = rendu.includes('?') ? '&' : '?'
-  return `${rendu}${sep}width=${largeur}&quality=62`
-}
