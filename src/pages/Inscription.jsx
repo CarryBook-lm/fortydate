@@ -140,6 +140,8 @@ export default function Inscription({ onComplete }) {
         profession: f.profession || null,
       })
       if (e2) throw e2
+      // Meta Pixel : inscription réussie (compte + profil créés)
+      if (window.fbq) window.fbq('track', 'CompleteRegistration')
       setStep(4) // passe à l'enrichissement
     } catch (e) {
       setErr(traduireErreur(e))
