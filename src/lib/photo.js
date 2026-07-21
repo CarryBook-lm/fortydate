@@ -75,5 +75,5 @@ export function miniature(url, largeur = 400) {
   if (!url.includes('/storage/v1/object/public/')) return url
   const rendu = url.replace('/storage/v1/object/public/', '/storage/v1/render/image/public/')
   const sep = rendu.includes('?') ? '&' : '?'
-  return `${rendu}${sep}width=${largeur}&quality=62&resize=cover`
+  return `${rendu}${sep}width=${largeur}&quality=62`
 }
