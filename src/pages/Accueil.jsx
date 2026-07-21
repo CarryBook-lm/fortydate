@@ -1624,7 +1624,7 @@ export default function Accueil({ onDeconnexion }) {
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #T</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #U</div>
           </div>
         </div>
       )}
@@ -1705,6 +1705,7 @@ function Style() {
       .fdh-rayon-tout{margin-left:auto;color:#D62A5E;font-size:.78rem;font-weight:700}
       .fdh-rayon{display:flex;gap:.6rem;overflow-x:auto;padding:.1rem .1rem .5rem;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
       .fdh-rayon>.fdh-carte{flex:0 0 40%;max-width:40%;scroll-snap-align:start}
+      .fdh-jaime .fdh-carte-b .fdh-carte-photo{aspect-ratio:1 / 1.414}
       .fdh-rayon-vide{color:#9a8b92;font-size:.85rem;padding:.1rem .1rem 1rem}
       .fdh-retour-lien{background:none;border:0;color:#D62A5E;font-weight:700;font-size:.9rem;cursor:pointer;padding:.1rem 0 .6rem}
       .fdh-carte-b{display:flex;flex-direction:column}
