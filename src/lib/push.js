@@ -11,7 +11,6 @@ function urlBase64ToUint8Array(base64String) {
   return arr
 }
 
-// Empeche tout blocage silencieux : chaque etape a un delai max.
 const TIMEOUT = Symbol('timeout')
 function withTimeout(promise, ms) {
   return Promise.race([
@@ -41,11 +40,16 @@ export async function subscribeToPush(userId) {
   }
   if (permission !== 'granted') return { ok: false, reason: '4/ permission = ' + permission + ' (non accordee)' }
 
-  // 5) Service worker pret (delai max 8s)
-  const reg = await withTimeout(navigator.serviceWorker.ready, 8000)
-  if (reg === TIMEOUT) return { ok: false, reason: '5/ service worker jamais pret (timeout 8s) — SW non enregistre sur cet appareil' }
+  // 5) Service worker : on l'enregistre nous-memes (idempotent) puis on attend qu'il soit actif
+  try {
+    await navigator.serviceWorker.register('/sw.js')
+  } catch (e) {
+    return { ok: false, reason: '5a/ echec enregistrement du service worker: ' + (e && e.message) }
+  }
+  const reg = await withTimeout(navigator.serviceWorker.ready, 20000)
+  if (reg === TIMEOUT) return { ok: false, reason: '5/ service worker toujours pas pret (timeout 20s) — recharge la page et reessaie' }
 
-  // 6) Abonnement push (delai max 15s)
+  // 6) Abonnement push (delai max 20s)
   let sub
   try {
     sub = await reg.pushManager.getSubscription()
@@ -55,9 +59,9 @@ export async function subscribeToPush(userId) {
           userVisibleOnly: true,
           applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
         }),
-        15000
+        20000
       )
-      if (created === TIMEOUT) return { ok: false, reason: '6/ abonnement push bloque (timeout 15s) — service de push injoignable' }
+      if (created === TIMEOUT) return { ok: false, reason: '6/ abonnement push bloque (timeout 20s) — service de push injoignable' }
       sub = created
     }
   } catch (e) {
