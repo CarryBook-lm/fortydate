@@ -1693,7 +1693,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 21/07 · #Y</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 21/07 · #Z</div>
           </div>
         </div>
       )}
@@ -1714,8 +1714,8 @@ export default function Accueil({ onDeconnexion }) {
 
       {!overlay && moi && !abonne && (
         <button className="fdh-cta-abo" onClick={() => ouvrirOverlay('abonnement')}>
-          <span className="fdh-cta-txt">✨ Profite à fond de FortyDate</span>
-          <span className="fdh-cta-prix">1000F · Mobile Money / carte</span>
+          <span className="fdh-cta-txt">✨ Profite à fond de FortyDate · 1000F · Mobile Money / carte</span>
+          <span className="fdh-cta-action">Abonne-toi maintenant →</span>
         </button>
       )}
 
@@ -1749,14 +1749,17 @@ function Style() {
       .fdh-app{min-height:100vh;background:#FBF4F5;font-family:system-ui,'Segoe UI',sans-serif;
         color:#3A0F38;display:flex;flex-direction:column;width:100%;max-width:480px;margin:0 auto;position:relative}
       .fdh-main{flex:1;width:100%;max-width:480px;margin:0 auto;box-sizing:border-box;padding:1rem 1rem calc(72px + 1rem + env(safe-area-inset-bottom));overflow-y:auto}
-      .fdh-main.avec-cta{padding-bottom:calc(120px + env(safe-area-inset-bottom))}
+      .fdh-main.avec-cta{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
       .fdh-cta-abo{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(52px + env(safe-area-inset-bottom));
         z-index:19;width:100%;max-width:520px;border:0;cursor:pointer;
         background:linear-gradient(90deg,#D62A5E,#4A1546);color:#fff;
-        padding:.62rem 1rem;display:flex;align-items:center;justify-content:center;gap:.6rem;flex-wrap:wrap;
+        padding:.6rem 1rem;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;
         box-shadow:0 -8px 20px -10px rgba(74,21,70,.45)}
-      .fdh-cta-txt{font-weight:800;font-size:.9rem}
-      .fdh-cta-prix{font-weight:700;font-size:.72rem;background:rgba(255,255,255,.2);padding:.2rem .55rem;border-radius:99px;white-space:nowrap}
+      .fdh-cta-txt{font-weight:800;font-size:.82rem;text-align:center;line-height:1.2}
+      .fdh-cta-action{font-weight:800;font-size:.82rem;background:#fff;color:#4A1546;
+        padding:.32rem 1rem;border-radius:99px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.18);
+        animation:ctaPulse 1.8s ease-in-out infinite}
+      @keyframes ctaPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
       .fdh-header{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #EEE0E4;
         padding:.9rem 1.1rem;padding-top:calc(.9rem + env(safe-area-inset-top));display:flex;align-items:center;gap:.7rem}
       .fdh-burger{background:none;border:0;font-size:1.4rem;cursor:pointer;color:#4A1546;line-height:1}
