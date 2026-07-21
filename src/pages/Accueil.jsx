@@ -950,15 +950,29 @@ function Chat({ moi, contact, onRetour, onLu }) {
 function Messages({ moi, ouvrir, setOuvrir, onLu }) {
   const [matchs, setMatchs] = useState(null)
   const [err, setErr] = useState('')
+  const [nonLus, setNonLus] = useState({})
   useEffect(() => {
     if (!moi || ouvrir) return
     let annule = false
     ;(async () => {
       const { data, error } = await supabase.rpc('mes_matchs')
       if (annule) return
-      if (error) setErr(error.message); else setMatchs(data || [])
+      if (error) { setErr(error.message); return }
+      setMatchs(data || [])
+      // Compter les messages non lus reçus, par expéditeur
+      const { data: msgs } = await supabase.from('messages')
+        .select('expediteur').eq('destinataire', moi.id).eq('lu', false)
+      if (annule) return
+      const compte = {}
+      ;(msgs || []).forEach(m => { compte[m.expediteur] = (compte[m.expediteur] || 0) + 1 })
+      setNonLus(compte)
     })()
-    return () => { annule = true }
+    // Temps réel : un nouveau message met à jour la pastille de la bonne conversation
+    const canal = supabase.channel('convs-' + moi.id)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `destinataire=eq.${moi.id}` },
+        payload => setNonLus(c => ({ ...c, [payload.new.expediteur]: (c[payload.new.expediteur] || 0) + 1 })))
+      .subscribe()
+    return () => { annule = true; supabase.removeChannel(canal) }
   }, [moi, ouvrir])
   if (ouvrir) return <Chat moi={moi} contact={ouvrir} onRetour={() => setOuvrir(null)} onLu={onLu} />
   if (err) return <div className="fdh-msg">{err}</div>
@@ -973,7 +987,9 @@ function Messages({ moi, ouvrir, setOuvrir, onLu }) {
         <button key={p.id} className="fdh-conv" onClick={() => setOuvrir(p)}>
           <Avatar url={p.photo_principale} prenom={p.prenom} taille="52px" />
           <div className="fdh-conv-txt"><div className="fdh-conv-nom">{p.prenom}<Badge p={p} size={16} /></div>
-            <div className="fdh-conv-apercu">Appuie pour discuter</div></div>
+            <div className={'fdh-conv-apercu' + (nonLus[p.id] ? ' fort' : '')}>
+              {nonLus[p.id] ? `${nonLus[p.id]} nouveau${nonLus[p.id] > 1 ? 'x' : ''} message${nonLus[p.id] > 1 ? 's' : ''}` : 'Appuie pour discuter'}</div></div>
+          {nonLus[p.id] > 0 && <span className="fdh-conv-badge">{nonLus[p.id] > 9 ? '9+' : nonLus[p.id]}</span>}
           <span className="fdh-conv-fleche">›</span>
         </button>
       ))}
@@ -1598,7 +1614,7 @@ export default function Accueil({ onDeconnexion }) {
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #R</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 20/07 · #S</div>
           </div>
         </div>
       )}
@@ -1861,6 +1877,9 @@ function Style() {
       .fdh-conv-txt{flex:1}
       .fdh-conv-nom{font-weight:800;color:#3A0F38}
       .fdh-conv-apercu{font-size:.82rem;color:#9a8b92}
+      .fdh-conv-apercu.fort{color:#D62A5E;font-weight:700}
+      .fdh-conv-badge{min-width:20px;height:20px;padding:0 5px;background:#D62A5E;color:#fff;
+        font-size:.72rem;font-weight:800;line-height:20px;text-align:center;border-radius:99px;flex:0 0 auto}
       .fdh-conv-fleche{color:#c9b9c0;font-size:1.4rem}
       .fdh-chat{display:flex;flex-direction:column;height:calc(100vh - 56px - 72px)}
       .fdh-chat-head{display:flex;align-items:center;gap:.6rem;padding:.2rem 0 .7rem;border-bottom:1px solid #EEE0E4}
