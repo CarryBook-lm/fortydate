@@ -221,7 +221,7 @@ export default function Inscription({ onComplete }) {
 
             <Input label="Ville" value={f.ville} onChange={v => set('ville', v)} />
 
-            <Input label="Date de naissance" type="date" value={f.date_naissance} onChange={v => set('date_naissance', v)} />
+            <ChampNaissance value={f.date_naissance} onChange={v => set('date_naissance', v)} />
             <Choix label="Je suis" value={f.genre} onChange={v => set('genre', v)}
               options={[['homme', 'Un homme'], ['femme', 'Une femme']]} />
             <Choix label="Je recherche" value={f.recherche_genre} onChange={v => set('recherche_genre', v)}
@@ -374,6 +374,47 @@ function ChampMotDePasse({ value, onChange, placeholder = 'Mot de passe' }) {
     </div>
   )
 }
+// ---------- Date de naissance : 3 menus, pas de calendrier à faire défiler ----------
+const MOIS_NOMS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+  'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+
+function ChampNaissance({ value, onChange }) {
+  const [a, m, j] = (value || '').split('-')
+  const anneeMax = new Date().getFullYear() - 40   // 40 ans minimum
+  const anneeMin = new Date().getFullYear() - 90
+  const annees = []
+  for (let x = anneeMax; x >= anneeMin; x--) annees.push(x)
+  const nbJours = (a && m) ? new Date(Number(a), Number(m), 0).getDate() : 31
+
+  const maj = (nj, nm, na) => {
+    if (!nj || !nm || !na) { onChange(''); return }
+    onChange(`${na}-${String(nm).padStart(2, '0')}-${String(nj).padStart(2, '0')}`)
+  }
+
+  return (
+    <>
+      <label className="fd-l">Date de naissance</label>
+      <div style={{ display: 'flex', gap: '.5rem' }}>
+        <select className="fd-in" style={{ flex: '0 0 27%' }} value={j ? Number(j) : ''}
+          onChange={e => maj(e.target.value, m, a)}>
+          <option value="">Jour</option>
+          {Array.from({ length: nbJours }, (_, i) => i + 1).map(x => <option key={x} value={x}>{x}</option>)}
+        </select>
+        <select className="fd-in" style={{ flex: 1 }} value={m ? Number(m) : ''}
+          onChange={e => maj(j, e.target.value, a)}>
+          <option value="">Mois</option>
+          {MOIS_NOMS.map((nom, i) => <option key={nom} value={i + 1}>{nom}</option>)}
+        </select>
+        <select className="fd-in" style={{ flex: '0 0 30%' }} value={a || ''}
+          onChange={e => maj(j, m, e.target.value)}>
+          <option value="">Année</option>
+          {annees.map(x => <option key={x} value={x}>{x}</option>)}
+        </select>
+      </div>
+    </>
+  )
+}
+
 function Ecran({ titre, sous, children }) {
   return (
     <div className="fd-ecran">
