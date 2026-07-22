@@ -1370,7 +1370,7 @@ function MotDePasse({ onClose }) {
 const ONGLETS_ACTION = [
   ['pwa', '📲', 'PWA', 'pwa', "Membres qui ont installé l'application"],
   ['ecrit', '✍️', 'Écrit', 'ecrit', 'Membres qui ont écrit un message'],
-  ['affin', '✨', "Affin'", 'affinites', 'Membres qui ont répondu au questionnaire'],
+  ['affin', '✨', 'Affinité', 'affinites', 'Membres qui ont répondu au questionnaire'],
   ['match', '💞', 'Match', 'matchs', 'Matchs créés'],
   ['enligne', '🟢', 'En ligne', 'en_ligne', 'Membres actifs sur la période'],
   ['abo', '⭐', 'Abonnés', 'abonnes', 'Membres avec un abonnement en cours'],
