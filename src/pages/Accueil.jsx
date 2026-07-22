@@ -363,6 +363,26 @@ function Rencontres({ moi }) {
   const [err, setErr] = useState('')
   const [match, setMatch] = useState(null)
   const [anim, setAnim] = useState('')
+  const [drag, setDrag] = useState(0)
+  const depart = useRef(null)
+
+  // --- Balayage (doigt sur mobile, souris sur ordi) ---
+  function debutGeste(x, y) { if (!anim) depart.current = { x, y } }
+  function bougeGeste(x, y) {
+    if (!depart.current) return
+    const dx = x - depart.current.x
+    const dy = y - depart.current.y
+    if (Math.abs(dy) > Math.abs(dx) * 1.4) return // l'utilisateur scrolle verticalement
+    setDrag(dx)
+  }
+  function finGeste() {
+    if (!depart.current) return
+    const dx = drag
+    depart.current = null
+    setDrag(0)
+    if (dx > 90) agir(true)        // balayage vers la DROITE  -> j'aime
+    else if (dx < -90) agir(false) // balayage vers la GAUCHE -> passer
+  }
 
   useEffect(() => {
     if (!moi) return
@@ -399,8 +419,20 @@ function Rencontres({ moi }) {
   const age = ageDepuis(p.date_naissance)
   return (
     <div className="fdh-renc">
-      <div className={'fdh-swipe' + (anim ? ' ' + anim : '')}>
+      <div
+        className={'fdh-swipe' + (anim ? ' ' + anim : '')}
+        style={drag ? { transform: `translateX(${drag}px) rotate(${drag / 22}deg)`, transition: 'none' } : undefined}
+        onTouchStart={e => debutGeste(e.touches[0].clientX, e.touches[0].clientY)}
+        onTouchMove={e => bougeGeste(e.touches[0].clientX, e.touches[0].clientY)}
+        onTouchEnd={finGeste}
+        onMouseDown={e => debutGeste(e.clientX, e.clientY)}
+        onMouseMove={e => { if (depart.current) bougeGeste(e.clientX, e.clientY) }}
+        onMouseUp={finGeste}
+        onMouseLeave={finGeste}
+      >
         <div className="fdh-swipe-photo">
+          {drag > 40 && <span className="fdh-tag-geste like">❤ J'AIME</span>}
+          {drag < -40 && <span className="fdh-tag-geste pass">✕ PASSER</span>}
           <Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" />
           <div className="fdh-swipe-info">
             <h2>{p.prenom}{age ? `, ${age}` : ''}<Badge p={p} size={20} /></h2>
@@ -414,6 +446,7 @@ function Rencontres({ moi }) {
         <button className="fdh-rond pass" onClick={() => agir(false)}>✕</button>
         <button className="fdh-rond like" onClick={() => agir(true)}>❤</button>
       </div>
+      <p className="fdh-astuce-geste">← Balaie pour passer · Balaie pour aimer →</p>
       {match && (
         <div className="fdh-match"><div className="fdh-match-box">
           <div className="fdh-match-emoji">🎉</div><h2>C'est un match !</h2>
@@ -1693,7 +1726,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 21/07 · #Z</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 22/07 · #AA</div>
           </div>
         </div>
       )}
@@ -1857,7 +1890,14 @@ function Style() {
 
       /* Rencontres */
       .fdh-renc{display:flex;flex-direction:column;align-items:center}
-      .fdh-swipe{width:100%;max-width:420px;transition:transform .26s ease, opacity .26s ease}
+      .fdh-swipe{width:100%;max-width:420px;transition:transform .26s ease, opacity .26s ease;
+        touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab}
+      .fdh-swipe:active{cursor:grabbing}
+      .fdh-tag-geste{position:absolute;top:1rem;z-index:3;font-weight:900;font-size:1rem;letter-spacing:.05em;
+        padding:.4rem .9rem;border-radius:10px;border:3px solid;background:rgba(255,255,255,.92)}
+      .fdh-tag-geste.like{left:1rem;color:#D62A5E;border-color:#D62A5E;transform:rotate(-12deg)}
+      .fdh-tag-geste.pass{right:1rem;color:#7A6B74;border-color:#7A6B74;transform:rotate(12deg)}
+      .fdh-astuce-geste{text-align:center;font-size:.78rem;color:#9b8b93;margin:.5rem 0 0}
       .fdh-swipe.like{transform:translateX(120%) rotate(12deg);opacity:0}
       .fdh-swipe.pass{transform:translateX(-120%) rotate(-12deg);opacity:0}
       .fdh-swipe-photo{position:relative;border-radius:20px;overflow:hidden;box-shadow:0 20px 50px -20px rgba(58,15,56,.55);aspect-ratio:1 / 1.414;background:#EDE0E4}
