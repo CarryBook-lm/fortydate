@@ -1377,19 +1377,14 @@ const ONGLETS_ACTION = [
 ]
 
 function Admin({ onVoir }) {
-  const [vue, setVue] = useState('stats') // stats | membres | paiements
+  const [vue, setVue] = useState('bord') // bord | membres | pays | paiements | signal
   const [membres, setMembres] = useState(null)
   const [paiements, setPaiements] = useState(null)
   const [signalements, setSignalements] = useState([])
   const [recherche, setRecherche] = useState('')
   const [msg, setMsg] = useState('')
-  // Filtres de période (un par onglet), par défaut « Aujourd'hui »
-  const [perStats, setPerStats] = useState('jour')
-  const [perMembres, setPerMembres] = useState('jour')
-  const [perPaie, setPerPaie] = useState('jour')
-  // Onglet « Actions des membres »
-  const [perAct, setPerAct] = useState('jour')
-  const [sousAct, setSousAct] = useState('pwa')
+  // Une seule période, partagée par toutes les vues
+  const [periode, setPeriode] = useState('jour')
   const [actions, setActions] = useState(null)
   const [chargeAct, setChargeAct] = useState(false)
   const [errAct, setErrAct] = useState('')
@@ -1412,13 +1407,11 @@ function Admin({ onVoir }) {
     const t = new Date(dateStr)
     return t >= debut && t < fin
   }
-  const PERIODES = [['jour', "Aujourd'hui"], ['hier', 'Hier'], ['semaine', 'Semaine'], ['mois', 'Mois'], ['annee', 'Année'], ['tout', 'Tout']]
-  const FiltrePeriode = ({ val, set }) => (
-    <div className="fdh-periode">
-      {PERIODES.map(([k, lbl]) => (
-        <button key={k} className={'fdh-per' + (val === k ? ' on' : '')} onClick={() => set(k)}>{lbl}</button>
-      ))}
-    </div>
+  const PERIODES = [['jour', "Aujourd'hui"], ['hier', 'Hier'], ['semaine', 'Cette semaine'], ['mois', 'Ce mois'], ['annee', 'Cette année'], ['tout', 'Tout']]
+  const FiltrePeriode = () => (
+    <select className="fdh-per-sel" value={periode} onChange={e => setPeriode(e.target.value)}>
+      {PERIODES.map(([k, lbl]) => <option key={k} value={k}>{lbl}</option>)}
+    </select>
   )
 
   useEffect(() => {
@@ -1445,11 +1438,11 @@ function Admin({ onVoir }) {
 
   // Chargement des chiffres « Actions des membres » (fonction SQL admin_actions)
   useEffect(() => {
-    if (vue !== 'actions') return
+    if (vue !== 'bord') return
     let annule = false
     ;(async () => {
       setChargeAct(true); setErrAct('')
-      const { debut, fin } = bornes(perAct)
+      const { debut, fin } = bornes(periode)
       const { data, error } = await supabase.rpc('admin_actions', {
         p_debut: debut ? debut.toISOString() : null,
         p_fin: fin ? fin.toISOString() : null,
@@ -1460,19 +1453,26 @@ function Admin({ onVoir }) {
       setChargeAct(false)
     })()
     return () => { annule = true }
-  }, [vue, perAct]) // eslint-disable-line
+  }, [vue, periode]) // eslint-disable-line
 
-  // Statistiques (sur la période choisie pour l'onglet Stats)
+  // Statistiques sur la période choisie
   const stats = (() => {
-    const ms = (membres || []).filter(x => dansPeriode(x.cree_at, perStats))
-    const ps = (paiements || []).filter(x => dansPeriode(x.cree_at || x.created_at, perStats))
+    const ms = (membres || []).filter(x => dansPeriode(x.cree_at, periode))
+    const ps = (paiements || []).filter(x => dansPeriode(x.cree_at || x.created_at, periode))
     const total = ms.length
-    const abonnes = ms.filter(abonneActif).length
     const hommes = ms.filter(x => x.genre === 'homme').length
     const femmes = ms.filter(x => x.genre === 'femme').length
     const bloques = ms.filter(x => x.bloque).length
     const revenus = ps.reduce((s, p) => s + (Number(p.montant) || 0), 0)
-    return { total, abonnes, hommes, femmes, bloques, revenus }
+    return { total, hommes, femmes, bloques, revenus }
+  })()
+
+  // Répartition par pays (sur la période choisie)
+  const parPays = (() => {
+    const ms = (membres || []).filter(x => dansPeriode(x.cree_at, periode))
+    const cpt = {}
+    for (const m of ms) { const c = m.pays_residence || '??'; cpt[c] = (cpt[c] || 0) + 1 }
+    return Object.entries(cpt).sort((a, b) => b[1] - a[1])
   })()
 
   async function appelAdmin(payload) {
@@ -1513,46 +1513,80 @@ function Admin({ onVoir }) {
   }
 
   const membresFiltres = (membres || []).filter(m => {
-    if (!dansPeriode(m.cree_at, perMembres)) return false
+    if (!dansPeriode(m.cree_at, periode)) return false
     if (!recherche.trim()) return true
     const q = recherche.toLowerCase()
     return (m.prenom || '').toLowerCase().includes(q)
       || (m.ville || '').toLowerCase().includes(q)
       || (m.telephone || '').includes(q)
   })
-  const paiementsFiltres = (paiements || []).filter(p => dansPeriode(p.cree_at || p.created_at, perPaie))
+  const paiementsFiltres = (paiements || []).filter(p => dansPeriode(p.cree_at || p.created_at, periode))
 
   if (membres === null) return <div className="fdh-msg">Chargement…</div>
 
   return (
     <div className="fdh-admin">
-      <h2 className="fdh-admin-titre">🛡️ Espace Admin</h2>
+      <div className="fdh-adm-tete">
+        <h2 className="fdh-admin-titre">🛡️ Espace Admin</h2>
+        <FiltrePeriode />
+      </div>
       <div className="fdh-sousongl">
-        <button className={'fdh-sous' + (vue === 'stats' ? ' on' : '')} onClick={() => setVue('stats')}>Stats</button>
+        <button className={'fdh-sous' + (vue === 'bord' ? ' on' : '')} onClick={() => setVue('bord')}>Bord</button>
         <button className={'fdh-sous' + (vue === 'membres' ? ' on' : '')} onClick={() => setVue('membres')}>Users</button>
-        <button className={'fdh-sous' + (vue === 'actions' ? ' on' : '')} onClick={() => setVue('actions')}>Actions</button>
+        <button className={'fdh-sous' + (vue === 'pays' ? ' on' : '')} onClick={() => setVue('pays')}>Pays</button>
         <button className={'fdh-sous' + (vue === 'paiements' ? ' on' : '')} onClick={() => setVue('paiements')}>Paiement</button>
         <button className={'fdh-sous' + (vue === 'signal' ? ' on' : '')} onClick={() => setVue('signal')}>Signalé {signalements.length > 0 && <span>{signalements.length}</span>}</button>
       </div>
       {msg && <div className="fdh-abo-msg err">{msg}</div>}
 
-      {vue === 'stats' && (
+      {vue === 'bord' && (
         <div>
-          <FiltrePeriode val={perStats} set={setPerStats} />
-          <div className="fdh-stats">
-          <div className="fdh-stat"><div className="fdh-stat-n">{stats.total}</div><div className="fdh-stat-l">Membres</div></div>
-          <div className="fdh-stat on"><div className="fdh-stat-n">{stats.abonnes}</div><div className="fdh-stat-l">Abonnés Sérénité</div></div>
-          <div className="fdh-stat"><div className="fdh-stat-n">{stats.hommes}</div><div className="fdh-stat-l">Hommes</div></div>
-          <div className="fdh-stat"><div className="fdh-stat-n">{stats.femmes}</div><div className="fdh-stat-l">Femmes</div></div>
-          <div className="fdh-stat"><div className="fdh-stat-n">{stats.bloques}</div><div className="fdh-stat-l">Bloqués</div></div>
-          <div className="fdh-stat or"><div className="fdh-stat-n">{stats.revenus.toLocaleString('fr-FR')} F</div><div className="fdh-stat-l">Revenus encaissés</div></div>
+          {/* Chiffres à l'instant, indépendants de la période */}
+          <div className="fdh-live">
+            <div className="fdh-live-item"><b>{actions?.abonnes ?? '—'}</b> abonnés actifs</div>
+            <div className="fdh-live-item"><b>{actions?.maintenant ?? '—'}</b> en ligne maintenant</div>
           </div>
+
+          <div className="fdh-stats">
+            <div className="fdh-stat"><div className="fdh-stat-n">{stats.total}</div><div className="fdh-stat-l">Nouveaux membres</div></div>
+            <div className="fdh-stat or"><div className="fdh-stat-n">{stats.revenus.toLocaleString('fr-FR')} F</div><div className="fdh-stat-l">Revenus encaissés</div></div>
+            <div className="fdh-stat"><div className="fdh-stat-n">{stats.hommes}</div><div className="fdh-stat-l">Hommes</div></div>
+            <div className="fdh-stat"><div className="fdh-stat-n">{stats.femmes}</div><div className="fdh-stat-l">Femmes</div></div>
+            <div className="fdh-stat"><div className="fdh-stat-n">{stats.bloques}</div><div className="fdh-stat-l">Bloqués</div></div>
+            <div className="fdh-stat"><div className="fdh-stat-n">{parPays.length}</div><div className="fdh-stat-l">Pays représentés</div></div>
+          </div>
+
+          <div className="fdh-adm-soustitre">Activité des membres</div>
+          {errAct && <div className="fdh-abo-msg err">{errAct}</div>}
+          {chargeAct && <p className="fdh-msg">Chargement…</p>}
+          {!chargeAct && actions && (
+            <div className="fdh-stats">
+              {ONGLETS_ACTION.filter(o => o[0] !== 'abo').map(([k, emo, lbl, champ]) => (
+                <div key={k} className="fdh-stat"><div className="fdh-stat-n">{actions[champ] ?? 0}</div><div className="fdh-stat-l">{emo} {lbl}</div></div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {vue === 'pays' && (
+        <div>
+          {parPays.length === 0
+            ? <p className="fdh-msg">Aucun membre sur cette période.</p>
+            : <div className="fdh-adm-liste">
+                {parPays.map(([code, n]) => (
+                  <div key={code} className="fdh-pays-ligne">
+                    <span className="fdh-pays-nom">{NOM_PAYS[code] || code}</span>
+                    <span className="fdh-pays-barre"><i style={{ width: Math.round((n / parPays[0][1]) * 100) + '%' }} /></span>
+                    <b className="fdh-pays-n">{n}</b>
+                  </div>
+                ))}
+              </div>}
         </div>
       )}
 
       {vue === 'membres' && (
         <div>
-          <FiltrePeriode val={perMembres} set={setPerMembres} />
           <input className="fdh-ein" style={{ marginBottom: '.8rem' }} value={recherche} placeholder="🔎 Chercher (prénom, ville, téléphone)…" onChange={e => setRecherche(e.target.value)} />
           <div className="fdh-adm-liste">
             {membresFiltres.map(m => (
@@ -1573,45 +1607,8 @@ function Admin({ onVoir }) {
         </div>
       )}
 
-      {vue === 'actions' && (
-        <div>
-          <FiltrePeriode val={perAct} set={setPerAct} />
-          <div className="fdh-sousongl mini">
-            {ONGLETS_ACTION.map(([k, emo, lbl]) => (
-              <button key={k} className={'fdh-sous mini' + (sousAct === k ? ' on' : '')} onClick={() => setSousAct(k)}>{emo} {lbl}</button>
-            ))}
-          </div>
-          {errAct && <div className="fdh-abo-msg err">{errAct}</div>}
-          {chargeAct && <p className="fdh-msg">Chargement…</p>}
-          {!chargeAct && actions && (() => {
-            const ong = ONGLETS_ACTION.find(o => o[0] === sousAct)
-            const val = actions[ong[3]] ?? 0
-            return (
-              <div className="fdh-act-bloc">
-                <div className="fdh-act-n">{val}</div>
-                <div className="fdh-act-l">{ong[4]}</div>
-                {sousAct === 'enligne' && (
-                  <div className="fdh-act-live">🟢 {actions.maintenant ?? 0} en ligne en ce moment</div>
-                )}
-                {sousAct === 'abo' && (
-                  <div className="fdh-act-note">Chiffre à l'instant — non filtré par période</div>
-                )}
-                <div className="fdh-act-tous">
-                  {ONGLETS_ACTION.map(([k, emo, lbl, champ]) => (
-                    <div key={k} className={'fdh-act-mini' + (sousAct === k ? ' on' : '')} onClick={() => setSousAct(k)}>
-                      <span>{emo} {lbl}</span><b>{actions[champ] ?? 0}</b>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })()}
-        </div>
-      )}
-
       {vue === 'paiements' && (
         <div>
-          <FiltrePeriode val={perPaie} set={setPerPaie} />
           <div className="fdh-adm-liste">
             {paiementsFiltres.map((p, k) => (
               <div key={p.id || k} className="fdh-adm-paie">
@@ -2152,6 +2149,21 @@ function Style() {
       .fdh-contact-mail{background:#F7EDF0;border:1.5px solid #E4D3D8;border-radius:14px;padding:.9rem;text-align:center;margin-bottom:.4rem}
       .fdh-contact-lbl{font-size:.75rem;color:#7A6B74;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
       .fdh-contact-adr{display:block;margin-top:.3rem;font-size:1rem;font-weight:800;color:#4A1546;word-break:break-all;text-decoration:none}
+      .fdh-adm-tete{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem}
+      .fdh-adm-tete .fdh-admin-titre{margin:0}
+      .fdh-per-sel{margin-left:auto;background:#fff;border:1.5px solid #E4D3D8;border-radius:10px;
+        padding:.45rem .6rem;font-size:.85rem;font-weight:800;color:#4A1546;cursor:pointer}
+      .fdh-live{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.8rem}
+      .fdh-live-item{flex:1 1 auto;background:#F7EDF0;border-radius:10px;padding:.5rem .7rem;
+        font-size:.8rem;color:#5c4f57;white-space:nowrap}
+      .fdh-live-item b{color:#4A1546;font-size:1rem;margin-right:.25rem}
+      .fdh-adm-soustitre{font-weight:800;color:#4A1546;font-size:.9rem;margin:1.1rem 0 .5rem}
+      .fdh-pays-ligne{display:flex;align-items:center;gap:.6rem;padding:.55rem .7rem;background:#fff;
+        border:1.5px solid #F1E4E8;border-radius:10px}
+      .fdh-pays-nom{flex:0 0 38%;font-size:.85rem;font-weight:700;color:#3A0F38;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .fdh-pays-barre{flex:1;height:8px;background:#F3E7EA;border-radius:99px;overflow:hidden}
+      .fdh-pays-barre i{display:block;height:100%;background:linear-gradient(90deg,#D62A5E,#4A1546);border-radius:99px}
+      .fdh-pays-n{color:#4A1546;font-size:.95rem;min-width:1.6rem;text-align:right}
       .fdh-act-note{margin-top:.6rem;font-size:.75rem;color:#9b8b93;font-style:italic}
       .fdh-act-tous{margin-top:1.2rem;border-top:1px solid #F1E4E8;padding-top:.8rem;display:flex;flex-direction:column;gap:.15rem}
       .fdh-act-mini{display:flex;justify-content:space-between;align-items:center;padding:.5rem .6rem;
