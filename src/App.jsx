@@ -38,10 +38,30 @@ function BanniereInstall() {
     if (res.outcome === 'accepted') setVisible(false)
   }
 
+  const [decalage, setDecalage] = useState(0)
+
+  // Place la bande juste SOUS l'en-tête (dont la hauteur varie selon l'appareil)
+  useEffect(() => {
+    if (!visible) return
+    const mesurer = () => {
+      const tete = document.querySelector('.fdh-header')
+      setDecalage(tete ? Math.round(tete.getBoundingClientRect().height) : 0)
+    }
+    mesurer()
+    const t = setTimeout(mesurer, 600)  // l'en-tête peut se monter après
+    window.addEventListener('resize', mesurer)
+    window.addEventListener('orientationchange', mesurer)
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('resize', mesurer)
+      window.removeEventListener('orientationchange', mesurer)
+    }
+  }, [visible])
+
   if (!visible) return null
   return (
     <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
+      position: 'fixed', top: decalage, left: 0, right: 0, zIndex: 9,
       background: 'linear-gradient(135deg,#4A1546,#7A1E52)', color: '#fff',
       display: 'flex', alignItems: 'center', gap: '.7rem', padding: '.6rem .9rem',
       fontFamily: "system-ui, 'Segoe UI', sans-serif", boxShadow: '0 4px 16px -6px rgba(0,0,0,.4)'
