@@ -515,7 +515,7 @@ function Rencontres({ moi }) {
 }
 
 /* ---------------- Onglet : J'aime ---------------- */
-function Jaime({ moi, onVoir, onDiscuter }) {
+function Jaime({ moi, onVoir, onDiscuter, onFaireAbo }) {
   const [matchs, setMatchs] = useState(null)
   const [recus, setRecus] = useState(null)
   const [err, setErr] = useState('')
@@ -553,18 +553,28 @@ function Jaime({ moi, onVoir, onDiscuter }) {
   if (err) return <div className="fdh-msg">{err}</div>
   if (matchs === null) return <div className="fdh-msg">Chargement…</div>
 
-  const carte = (p, type) => (
+  const carte = (p, type) => {
+    const floute = type === 'recus' && !estAbonne(moi)
+    return (
     <div key={p.id} className="fdh-carte fdh-carte-b">
-      <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></button>
-      <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></div>
+      <button className="fdh-carte-photo" onClick={() => floute ? onFaireAbo && onFaireAbo() : onVoir(p.id)}>
+        <Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" />
+        {floute && <span className="fdh-floute"><span className="fdh-floute-ic">🔒</span></span>}
+      </button>
+      <div className="fdh-nom">{floute ? '••••••' : <>{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></>}</div>
       <div className="fdh-2btn">
-        <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
-        {type === 'recus'
-          ? <button className="b-coeur" disabled={aimeEnCours === p.id} onClick={() => aimerEnRetour(p)} aria-label="Aimer en retour">{aimeEnCours === p.id ? '…' : '❤'}</button>
-          : <button className="b-disc" onClick={() => onDiscuter(p)}>Discuter</button>}
+        {floute
+          ? <button className="b-disc" onClick={() => onFaireAbo && onFaireAbo()}>Découvrir</button>
+          : <>
+              <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
+              {type === 'recus'
+                ? <button className="b-coeur" disabled={aimeEnCours === p.id} onClick={() => aimerEnRetour(p)} aria-label="Aimer en retour">{aimeEnCours === p.id ? '…' : '❤'}</button>
+                : <button className="b-disc" onClick={() => onDiscuter(p)}>Discuter</button>}
+            </>}
       </div>
     </div>
-  )
+    )
+  }
 
   const popupMatch = nouveauMatch && (
     <div className="fdh-match"><div className="fdh-match-box">
@@ -606,6 +616,11 @@ function Jaime({ moi, onVoir, onDiscuter }) {
 
   return (
     <div className="fdh-jaime">
+      {!estAbonne(moi) && recus.length > 0 && (
+        <button className="fdh-teaser" onClick={() => onFaireAbo && onFaireAbo()}>
+          🔒 <b>{recus.length}</b> {recus.length > 1 ? 'personnes t\'ont aimée' : "personne t'a aimée"} — débloque pour voir qui ›
+        </button>
+      )}
       {rayon('recus', "Ils t'ont aimée · Aime-les en retour", recus, '💗', "Personne ne t'a encore aimée.")}
       {rayon('matchs', 'Tes matchs · Vous vous êtes aimés', matchs, '💘', 'Pas encore de match.')}
       {popupMatch}
@@ -614,7 +629,7 @@ function Jaime({ moi, onVoir, onDiscuter }) {
 }
 
 /* ---------------- Onglet : Match (affinités %) ---------------- */
-function MatchAffinites({ moi, mesReponses, onFaireQuestionnaire, onVoir, onDiscuter }) {
+function MatchAffinites({ moi, mesReponses, onFaireQuestionnaire, onVoir, onDiscuter, onFaireAbo }) {
   const [liste, setListe] = useState(null)
   const [err, setErr] = useState('')
 
@@ -656,13 +671,18 @@ function MatchAffinites({ moi, mesReponses, onFaireQuestionnaire, onVoir, onDisc
 
   return (
     <div className="fdh-affs">
+      {!estAbonne(moi) && (
+        <button className="fdh-teaser" onClick={() => onFaireAbo && onFaireAbo()}>
+          🔒 Tes pourcentages d'affinité sont masqués — débloque-les ›
+        </button>
+      )}
       <p className="fdh-affs-info">Classés par affinité avec toi ✨</p>
       <div className="fdh-grid2">
         {liste.map(p => (
           <div key={p.id} className="fdh-carte fdh-carte-b">
             <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}>
               <Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" />
-              <span className="fdh-pct-badge" style={{ background: couleurCompat(p.compat) }}>{p.compat}%</span>
+              <span className="fdh-pct-badge" style={{ background: estAbonne(moi) ? couleurCompat(p.compat) : '#9b8b93' }}>{estAbonne(moi) ? p.compat + '%' : '🔒 ?%'}</span>
             </button>
             <div className="fdh-nom">
               {p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}
@@ -998,13 +1018,30 @@ function Bulle({ m, moi, msgs, onRepondre }) {
   )
 }
 
-function Chat({ moi, contact, onRetour, onLu }) {
+function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
   const [msgs, setMsgs] = useState([])
   const [texte, setTexte] = useState('')
   const [envoi, setEnvoi] = useState(false)
   const [repondA, setRepondA] = useState(null)
   const [emoOuvert, setEmoOuvert] = useState(false)
+  const [envoyesJour, setEnvoyesJour] = useState(null) // messages envoyés aujourd'hui
   const bas = useRef(null)
+  const abonne = estAbonne(moi)
+  const restants = abonne ? Infinity : Math.max(0, LIMITE_MSG_JOUR - (envoyesJour ?? 0))
+
+  // Compte les messages envoyés aujourd'hui (toutes conversations confondues)
+  useEffect(() => {
+    if (abonne) return
+    let annule = false
+    ;(async () => {
+      const d = new Date(); d.setHours(0, 0, 0, 0)
+      const { count } = await supabase.from('messages')
+        .select('id', { count: 'exact', head: true })
+        .eq('expediteur', moi.id).gte('cree_at', d.toISOString())
+      if (!annule) setEnvoyesJour(count || 0)
+    })()
+    return () => { annule = true }
+  }, [moi.id, abonne])
 
   useEffect(() => {
     let annule = false
@@ -1034,11 +1071,15 @@ function Chat({ moi, contact, onRetour, onLu }) {
 
   async function envoyer() {
     const t = texte.trim(); if (!t || envoi) return
+    if (!abonne && restants <= 0) return
     setEnvoi(true); setEmoOuvert(false)
     const { data, error } = await supabase.from('messages')
       .insert({ expediteur: moi.id, destinataire: contact.id, contenu: t, repond_a: repondA?.id || null })
       .select().single()
-    if (!error && data) { setMsgs(m => [...m, data]); setTexte(''); setRepondA(null) }
+    if (!error && data) {
+      setMsgs(m => [...m, data]); setTexte(''); setRepondA(null)
+      if (!abonne) setEnvoyesJour(n => (n ?? 0) + 1)
+    }
     setEnvoi(false)
   }
 
@@ -1069,16 +1110,26 @@ function Chat({ moi, contact, onRetour, onLu }) {
         </div>
       )}
 
+      {!abonne && envoyesJour !== null && (
+        restants > 0
+          ? <div className="fdh-msg-reste">Il te reste <b>{restants}</b> message{restants > 1 ? 's' : ''} aujourd'hui · <span onClick={() => onFaireAbo && onFaireAbo()}>Passer à Sérénité ›</span></div>
+          : <button className="fdh-teaser" style={{ margin: '0 .5rem .4rem' }} onClick={() => onFaireAbo && onFaireAbo()}>
+              🔒 Limite du jour atteinte — passe à Sérénité pour des messages illimités ›
+            </button>
+      )}
+
       <div className="fdh-chat-saisie">
         <button className="fdh-emo-btn" onClick={() => setEmoOuvert(v => !v)} aria-label="Emojis">😊</button>
-        <input value={texte} placeholder="Écris un message…" onChange={e => setTexte(e.target.value)}
+        <input value={texte} placeholder={!abonne && restants <= 0 ? 'Limite du jour atteinte' : 'Écris un message…'}
+          disabled={!abonne && restants <= 0}
+          onChange={e => setTexte(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && envoyer()} onFocus={() => setEmoOuvert(false)} />
-        <button className="fdh-envoi" onClick={envoyer} disabled={envoi}>➤</button>
+        <button className="fdh-envoi" onClick={envoyer} disabled={envoi || (!abonne && restants <= 0)}>➤</button>
       </div>
     </div>
   )
 }
-function Messages({ moi, ouvrir, setOuvrir, onLu }) {
+function Messages({ moi, ouvrir, setOuvrir, onLu, onFaireAbo }) {
   const [matchs, setMatchs] = useState(null)
   const [err, setErr] = useState('')
   const [nonLus, setNonLus] = useState({})
@@ -1105,7 +1156,7 @@ function Messages({ moi, ouvrir, setOuvrir, onLu }) {
       .subscribe()
     return () => { annule = true; supabase.removeChannel(canal) }
   }, [moi, ouvrir])
-  if (ouvrir) return <Chat moi={moi} contact={ouvrir} onRetour={() => setOuvrir(null)} onLu={onLu} />
+  if (ouvrir) return <Chat moi={moi} contact={ouvrir} onRetour={() => setOuvrir(null)} onLu={onLu} onFaireAbo={onFaireAbo} />
   if (err) return <div className="fdh-msg">{err}</div>
   if (matchs === null) return <div className="fdh-msg">Chargement…</div>
   if (matchs.length === 0)
@@ -1129,6 +1180,9 @@ function Messages({ moi, ouvrir, setOuvrir, onLu }) {
 }
 
 /* ---------------- Onglet : Visites (réservé Sérénité) ---------------- */
+// Messages par jour pour un membre non abonné
+const LIMITE_MSG_JOUR = 5
+
 function estAbonne(moi) {
   return moi?.abo_statut === 'actif' && moi?.abo_expire_at && new Date(moi.abo_expire_at) > new Date()
 }
@@ -1988,9 +2042,9 @@ export default function Accueil({ onDeconnexion }) {
         {overlay === 'abonnement' && <Abonnement moi={moi} onFini={rechargerProfil} onClose={() => setOverlay(null)} />}
         {!overlay && onglet === 'proximite' && <Proximite moi={moi} onVoir={voirProfil} />}
         {!overlay && onglet === 'rencontres' && <Rencontres moi={moi} />}
-        {!overlay && onglet === 'jaime' && <Jaime moi={moi} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} />}
-        {!overlay && onglet === 'messages' && <Messages moi={moi} ouvrir={conversationAvec} setOuvrir={setConversationAvec} onLu={rafraichirBadges} />}
-        {!overlay && onglet === 'match' && <MatchAffinites moi={moi} mesReponses={mesReponses} onFaireQuestionnaire={() => ouvrirOverlay('questionnaire')} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} />}
+        {!overlay && onglet === 'jaime' && <Jaime moi={moi} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
+        {!overlay && onglet === 'messages' && <Messages moi={moi} ouvrir={conversationAvec} setOuvrir={setConversationAvec} onLu={rafraichirBadges} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
+        {!overlay && onglet === 'match' && <MatchAffinites moi={moi} mesReponses={mesReponses} onFaireQuestionnaire={() => ouvrirOverlay('questionnaire')} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
         {!overlay && onglet === 'visites' && <Visites moi={moi} onVoir={voirProfil} onFaireAbo={() => ouvrirOverlay('abonnement')} onDiscuter={ouvrirDiscussion} />}
         {!overlay && onglet === 'admin' && estAdmin && <Admin onVoir={(id) => voirProfil(id, false)} />}
       </main>
@@ -2224,6 +2278,15 @@ function Style() {
       .fdh-contact-mail{background:#F7EDF0;border:1.5px solid #E4D3D8;border-radius:14px;padding:.9rem;text-align:center;margin-bottom:.4rem}
       .fdh-contact-lbl{font-size:.75rem;color:#7A6B74;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
       .fdh-contact-adr{display:block;margin-top:.3rem;font-size:1rem;font-weight:800;color:#4A1546;word-break:break-all;text-decoration:none}
+      .fdh-floute{position:absolute;inset:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+        background:rgba(74,21,70,.35);display:grid;place-items:center}
+      .fdh-floute-ic{font-size:1.6rem}
+      .fdh-teaser{width:100%;border:0;border-radius:12px;padding:.7rem .9rem;margin-bottom:.8rem;cursor:pointer;
+        background:linear-gradient(90deg,#D62A5E,#4A1546);color:#fff;font-size:.85rem;font-weight:700;text-align:left}
+      .fdh-teaser b{font-size:1rem}
+      .fdh-msg-reste{font-size:.76rem;color:#7A6B74;text-align:center;padding:.2rem .5rem .4rem}
+      .fdh-msg-reste b{color:#4A1546}
+      .fdh-msg-reste span{color:#D62A5E;font-weight:800;cursor:pointer}
       .fdh-zone{display:flex;gap:.5rem;margin-bottom:.9rem}
       .fdh-zone-b{flex:1;background:#fff;border:1.5px solid #E4D3D8;border-radius:12px;padding:.6rem .4rem;
         font-weight:800;font-size:.86rem;color:#7A6B74;cursor:pointer;white-space:nowrap}
