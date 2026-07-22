@@ -379,10 +379,30 @@ function FicheProfil({ profil, moi, onFermer }) {
 }
 
 /* ---------------- Onglet : Proximité ---------------- */
+const SITUATIONS = [
+  ['', 'Peu importe'], ['celibataire', 'Célibataire'], ['divorce', 'Divorcé(e)'],
+  ['veuf', 'Veuf(ve)'], ['separe', 'Séparé(e)'],
+]
+
 function Proximite({ moi, onVoir }) {
   const [profils, setProfils] = useState(null)
   const [err, setErr] = useState('')
-  const [zone, setZone] = useState('pays') // pays | monde
+  const [zone, setZone] = useState('pays')        // pays | monde
+  const [ouvert, setOuvert] = useState(false)
+  const [paysPrecis, setPaysPrecis] = useState('')
+  const [ageMin, setAgeMin] = useState('')
+  const [ageMax, setAgeMax] = useState('')
+  const [situation, setSituation] = useState('')
+  const [religion, setReligion] = useState('')
+  const [religionSaisie, setReligionSaisie] = useState('')
+
+  const nbFiltres = [paysPrecis, ageMin, ageMax, situation, religion].filter(Boolean).length
+
+  function reinitialiser() {
+    setPaysPrecis(''); setAgeMin(''); setAgeMax(''); setSituation('')
+    setReligion(''); setReligionSaisie('')
+  }
+
   useEffect(() => {
     if (!moi) return
     let annule = false
@@ -390,38 +410,101 @@ function Proximite({ moi, onVoir }) {
       try {
         setProfils(null)
         let q = supabase.from('profiles')
-          .select('id, prenom, date_naissance, photo_principale, pays_residence, derniere_activite, abo_statut, abo_expire_at')
+          .select('id, prenom, date_naissance, photo_principale, pays_residence, situation, religion, derniere_activite, abo_statut, abo_expire_at')
           .neq('id', moi.id)
-        if (zone === 'pays' && moi.pays_residence) q = q.eq('pays_residence', moi.pays_residence)
+
+        if (paysPrecis) q = q.eq('pays_residence', paysPrecis)
+        else if (zone === 'pays' && moi.pays_residence) q = q.eq('pays_residence', moi.pays_residence)
+
+        const auj = new Date()
+        if (ageMin) {
+          const d = new Date(auj); d.setFullYear(d.getFullYear() - Number(ageMin))
+          q = q.lte('date_naissance', d.toISOString().slice(0, 10))
+        }
+        if (ageMax) {
+          const d = new Date(auj); d.setFullYear(d.getFullYear() - Number(ageMax) - 1)
+          q = q.gte('date_naissance', d.toISOString().slice(0, 10))
+        }
+        if (situation) q = q.eq('situation', situation)
+        if (religion) q = q.ilike('religion', '%' + religion + '%')
+
         const { data, error } = await q.limit(100)
         if (error) throw error
         if (!annule) setProfils(data || [])
       } catch (e) { if (!annule) setErr(e.message || 'Erreur.') }
     })()
     return () => { annule = true }
-  }, [moi, zone])
+  }, [moi, zone, paysPrecis, ageMin, ageMax, situation, religion])
 
-  const filtre = (
-    <div className="fdh-zone">
-      <button className={'fdh-zone-b' + (zone === 'pays' ? ' on' : '')} onClick={() => setZone('pays')}>
-        🏠 Mon pays
-      </button>
-      <button className={'fdh-zone-b' + (zone === 'monde' ? ' on' : '')} onClick={() => setZone('monde')}>
-        🌍 Tous les pays
-      </button>
+  const ages = []
+  for (let x = 40; x <= 90; x++) ages.push(x)
+
+  const barre = (
+    <div>
+      <div className="fdh-zone">
+        <button className={'fdh-zone-b' + (zone === 'pays' && !paysPrecis ? ' on' : '')}
+          onClick={() => { setZone('pays'); setPaysPrecis('') }}>🏠 Mon pays</button>
+        <button className={'fdh-zone-b' + (zone === 'monde' && !paysPrecis ? ' on' : '')}
+          onClick={() => { setZone('monde'); setPaysPrecis('') }}>🌍 Tous les pays</button>
+        <button className={'fdh-zone-b fdh-zone-f' + (ouvert || nbFiltres ? ' on' : '')}
+          onClick={() => setOuvert(v => !v)} aria-label="Filtres">
+          ⚙️{nbFiltres > 0 && <span className="fdh-sous-pastille">{nbFiltres}</span>}
+        </button>
+      </div>
+
+      {ouvert && (
+        <div className="fdh-panneau">
+          <label className="fdh-f-l">Pays précis</label>
+          <select className="fdh-f-in" value={paysPrecis} onChange={e => setPaysPrecis(e.target.value)}>
+            <option value="">— Selon le choix ci-dessus —</option>
+            {Object.entries(NOM_PAYS).map(([code, nom]) => <option key={code} value={code}>{nom}</option>)}
+          </select>
+
+          <label className="fdh-f-l">Âge</label>
+          <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center' }}>
+            <select className="fdh-f-in" value={ageMin} onChange={e => setAgeMin(e.target.value)}>
+              <option value="">De…</option>
+              {ages.map(x => <option key={x} value={x}>{x} ans</option>)}
+            </select>
+            <span style={{ color: '#9a8b92' }}>→</span>
+            <select className="fdh-f-in" value={ageMax} onChange={e => setAgeMax(e.target.value)}>
+              <option value="">À…</option>
+              {ages.map(x => <option key={x} value={x}>{x} ans</option>)}
+            </select>
+          </div>
+
+          <label className="fdh-f-l">Situation</label>
+          <select className="fdh-f-in" value={situation} onChange={e => setSituation(e.target.value)}>
+            {SITUATIONS.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+          </select>
+
+          <label className="fdh-f-l">Pratique religieuse</label>
+          <div style={{ display: 'flex', gap: '.5rem' }}>
+            <input className="fdh-f-in" value={religionSaisie} placeholder="ex. chrétienne, musulmane…"
+              onChange={e => setReligionSaisie(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && setReligion(religionSaisie.trim())} />
+            <button className="fdh-f-ok" onClick={() => setReligion(religionSaisie.trim())}>OK</button>
+          </div>
+
+          {nbFiltres > 0 && <button className="fdh-f-reset" onClick={reinitialiser}>Effacer les filtres</button>}
+        </div>
+      )}
     </div>
   )
 
-  if (err) return <div>{filtre}<div className="fdh-msg">{err}</div></div>
-  if (profils === null) return <div>{filtre}<div className="fdh-msg">Chargement…</div></div>
+  if (err) return <div>{barre}<div className="fdh-msg">{err}</div></div>
+  if (profils === null) return <div>{barre}<div className="fdh-msg">Chargement…</div></div>
   if (profils.length === 0)
-    return <div>{filtre}<div className="fdh-vide-etat"><div className="fdh-vide-emoji">🕊️</div>
-      <p>Aucun profil {zone === 'pays' ? 'dans ton pays' : ''} pour l'instant.</p>
-      <p className="fdh-vide-sous">{zone === 'pays' ? 'Essaie « Tous les pays » pour élargir ta recherche.' : "Invite d'autres personnes à s'inscrire — ils apparaîtront ici."}</p></div></div>
+    return <div>{barre}<div className="fdh-vide-etat"><div className="fdh-vide-emoji">🕊️</div>
+      <p>Aucun profil ne correspond{nbFiltres > 0 ? ' à ta recherche' : ''}.</p>
+      <p className="fdh-vide-sous">{nbFiltres > 0
+        ? "Essaie d'élargir tes filtres."
+        : (zone === 'pays' ? 'Essaie « Tous les pays » pour élargir ta recherche.' : "Invite d'autres personnes à s'inscrire — ils apparaîtront ici.")}</p></div></div>
 
   return (
     <div>
-      {filtre}
+      {barre}
+      {nbFiltres > 0 && <p className="fdh-f-nb">{profils.length} profil{profils.length > 1 ? 's' : ''} trouvé{profils.length > 1 ? 's' : ''}</p>}
       <div className="fdh-grid">
         {profils.map(p => (
           <button key={p.id} className="fdh-carte" onClick={() => onVoir(p.id)}>
@@ -436,7 +519,6 @@ function Proximite({ moi, onVoir }) {
   )
 }
 
-/* ---------------- Onglet : Rencontres ---------------- */
 function Rencontres({ moi }) {
   const [profils, setProfils] = useState(null)
   const [i, setI] = useState(0)
@@ -2448,6 +2530,18 @@ function Style() {
       .fdh-msg-reste b{color:#4A1546}
       .fdh-msg-reste span{color:#D62A5E;font-weight:800;cursor:pointer}
       .fdh-zone{display:flex;gap:.5rem;margin-bottom:.9rem}
+      .fdh-zone-f{flex:0 0 52px;position:relative;font-size:1rem}
+      .fdh-panneau{background:#fff;border:1.5px solid #E4D3D8;border-radius:14px;padding:.9rem;margin:-.3rem 0 .9rem}
+      .fdh-f-l{display:block;font-size:.75rem;font-weight:800;color:#4A1546;margin:.7rem 0 .3rem}
+      .fdh-f-l:first-child{margin-top:0}
+      .fdh-f-in{width:100%;flex:1;min-width:0;padding:.6rem .7rem;border:1.5px solid #E4D3D8;border-radius:10px;
+        font-size:.9rem;background:#fff;color:#3A0F38;box-sizing:border-box;outline:none}
+      .fdh-f-in:focus{border-color:#D62A5E}
+      .fdh-f-ok{flex:0 0 auto;background:#4A1546;color:#fff;border:0;border-radius:10px;padding:0 1rem;
+        font-weight:800;font-size:.85rem;cursor:pointer}
+      .fdh-f-reset{width:100%;margin-top:.9rem;background:none;border:1.5px solid #E4D3D8;border-radius:10px;
+        padding:.55rem;color:#7A6B74;font-weight:800;font-size:.82rem;cursor:pointer}
+      .fdh-f-nb{font-size:.78rem;color:#7A6B74;margin:0 0 .6rem;text-align:center}
       .fdh-zone-b{flex:1;background:#fff;border:1.5px solid #E4D3D8;border-radius:12px;padding:.6rem .4rem;
         font-weight:800;font-size:.86rem;color:#7A6B74;cursor:pointer;white-space:nowrap}
       .fdh-zone-b.on{background:#4A1546;color:#fff;border-color:#4A1546}
