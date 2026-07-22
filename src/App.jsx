@@ -66,6 +66,134 @@ function BanniereInstall() {
   )
 }
 
+/* ---------- Rappel d'installation (pop-up au centre de l'écran) ----------
+   Réglages : change ces 3 valeurs pour ajuster la fréquence.            */
+const DELAI_1RE_FOIS = 2 * 60 * 1000        // 1re apparition après 2 minutes d'utilisation
+const PAUSE_APRES_REFUS = 24 * 60 * 60 * 1000 // on repropose 24 h après une fermeture
+const MAX_REFUS = 3                          // au-delà, on n'insiste plus (le menu ☰ reste dispo)
+
+function PopupInstall() {
+  const [prompt, setPrompt] = useState(null)
+  const [visible, setVisible] = useState(false)
+  const [ios, setIos] = useState(false)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    // Déjà installée -> jamais de rappel
+    const installee = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone
+    if (installee) return
+    let lu = {}
+    try { lu = JSON.parse(localStorage.getItem('fd_install') || '{}') } catch (_) { lu = {} }
+    if (lu.installe) return
+    if ((lu.refus || 0) >= MAX_REFUS) return
+
+    setIos(/iphone|ipad|ipod/i.test(window.navigator.userAgent))
+
+    const onPrompt = (e) => { e.preventDefault(); setPrompt(e) }
+    const onInstalled = () => {
+      try { localStorage.setItem('fd_install', JSON.stringify({ installe: true })) } catch (_) {}
+      setVisible(false)
+    }
+    window.addEventListener('beforeinstallprompt', onPrompt)
+    window.addEventListener('appinstalled', onInstalled)
+
+    // Délai avant affichage : 2 min la 1re fois, sinon 24 h après le dernier refus
+    const attente = lu.dernier ? Math.max(0, lu.dernier + PAUSE_APRES_REFUS - Date.now()) : DELAI_1RE_FOIS
+    const t = setTimeout(() => setVisible(true), attente)
+
+    return () => {
+      clearTimeout(t)
+      window.removeEventListener('beforeinstallprompt', onPrompt)
+      window.removeEventListener('appinstalled', onInstalled)
+    }
+  }, [])
+
+  function fermer() {
+    let lu = {}
+    try { lu = JSON.parse(localStorage.getItem('fd_install') || '{}') } catch (_) {}
+    try {
+      localStorage.setItem('fd_install', JSON.stringify({
+        ...lu, refus: (lu.refus || 0) + 1, dernier: Date.now(),
+      }))
+    } catch (_) {}
+    setVisible(false)
+  }
+
+  async function installer() {
+    if (!prompt) return
+    prompt.prompt()
+    const res = await prompt.userChoice
+    if (res.outcome === 'accepted') {
+      try { localStorage.setItem('fd_install', JSON.stringify({ installe: true })) } catch (_) {}
+      setVisible(false)
+    } else { fermer() }
+  }
+
+  if (!visible) return null
+
+  // Android avec l'événement -> installation directe. Sinon (iPhone, ou événement
+  // indisponible) -> on explique la manipulation.
+  const directe = !ios && !!prompt
+
+  return (
+    <div onClick={fermer} style={{
+      position: 'fixed', inset: 0, zIndex: 300, background: 'rgba(36,10,42,.6)',
+      display: 'grid', placeItems: 'center', padding: '1.2rem',
+      fontFamily: "system-ui, 'Segoe UI', sans-serif",
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        width: '100%', maxWidth: 360, background: '#FBF4F5', borderRadius: 20,
+        padding: '1.6rem 1.3rem 1.3rem', position: 'relative', textAlign: 'center',
+        boxShadow: '0 24px 60px -20px rgba(0,0,0,.6)', color: '#3A0F38',
+      }}>
+        <button onClick={fermer} aria-label="Fermer" style={{
+          position: 'absolute', top: 8, right: 10, background: 'none', border: 0,
+          fontSize: '1.3rem', color: '#9a8b92', cursor: 'pointer', lineHeight: 1,
+        }}>✕</button>
+
+        <div style={{ fontSize: '2.6rem', lineHeight: 1 }}>📲</div>
+        <h2 style={{ fontSize: '1.25rem', margin: '.6rem 0 .3rem' }}>Installe FortyDate</h2>
+        <p style={{ fontSize: '.9rem', color: '#7A6B74', margin: '0 0 1rem', lineHeight: 1.45 }}>
+          {directe
+            ? "Ouvre l'appli en un tap depuis ton écran d'accueil, et reçois tes notifications même appli fermée."
+            : ios
+              ? "Sur iPhone, l'installation est indispensable pour recevoir les notifications."
+              : "Ajoute FortyDate à ton écran d'accueil pour l'ouvrir comme une vraie application."}
+        </p>
+
+        {!directe && (
+          <div style={{
+            background: '#F3E7EA', borderRadius: 12, padding: '.85rem .9rem',
+            fontSize: '.86rem', textAlign: 'left', lineHeight: 1.6, marginBottom: '1rem',
+          }}>
+            {ios ? (
+              <>1. Appuie sur <b>Partager ⬆️</b> en bas de Safari<br />
+                 2. Choisis <b>« Sur l'écran d'accueil »</b><br />
+                 3. Appuie sur <b>Ajouter</b></>
+            ) : (
+              <>1. Ouvre le menu <b>⋮</b> de Chrome (en haut à droite)<br />
+                 2. Choisis <b>« Ajouter à l'écran d'accueil »</b><br />
+                 3. Confirme avec <b>Installer</b></>
+            )}
+          </div>
+        )}
+
+        {directe && (
+          <button onClick={installer} style={{
+            width: '100%', background: '#D62A5E', color: '#fff', border: 0, borderRadius: 12,
+            padding: '.85rem', fontSize: '1rem', fontWeight: 800, cursor: 'pointer',
+          }}>Installer maintenant</button>
+        )}
+
+        <button onClick={fermer} style={{
+          width: '100%', background: 'none', border: 0, color: '#7A6B74',
+          fontSize: '.85rem', fontWeight: 700, cursor: 'pointer', padding: '.7rem 0 0',
+        }}>Plus tard</button>
+      </div>
+    </div>
+  )
+}
+
 export default function App() {
   const [session, setSession] = useState(null)
   const [checking, setChecking] = useState(true)
@@ -133,6 +261,7 @@ export default function App() {
   return (
     <>
       <BanniereInstall />
+      {session && page !== 'inscription' && <PopupInstall />}
       {contenu}
     </>
   )
