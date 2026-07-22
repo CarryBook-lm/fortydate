@@ -2385,10 +2385,10 @@ export default function Accueil({ onDeconnexion }) {
 function Style() {
   return (
     <style>{`
-      html,body{margin:0;padding:0;overflow-x:hidden;max-width:100%}
+      html,body{margin:0;padding:0}
       #root{width:100%;max-width:480px;margin:0 auto}
       .fdh-app{min-height:100vh;background:#FBF4F5;font-family:system-ui,'Segoe UI',sans-serif;
-        color:#3A0F38;display:flex;flex-direction:column;width:100%;max-width:480px;margin:0 auto;position:relative}
+        color:#3A0F38;display:flex;flex-direction:column;width:100%;max-width:480px;margin:0 auto;position:relative;overflow-x:clip}
       .fdh-main{flex:1;width:100%;max-width:480px;margin:0 auto;box-sizing:border-box;padding:1rem 1rem calc(72px + 1rem + env(safe-area-inset-bottom));overflow-y:auto}
       .fdh-main.avec-cta{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
       .fdh-cta-abo{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(52px + env(safe-area-inset-bottom));
