@@ -1997,21 +1997,24 @@ function Style() {
 
       .fdh-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.55rem}
       .fdh-carte{border:0;padding:0;text-align:left;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 6px 18px -12px rgba(58,15,56,.4);cursor:pointer}
-      .fdh-carte-photo{width:100%;aspect-ratio:1 / 1.414;background:#EDE0E4;position:relative}
+      .fdh-carte-photo{width:100%;aspect-ratio:1 / 1.414;background:#EDE0E4;position:relative;overflow:hidden}
+      .fdh-carte-photo .fdh-photo,
+      .fdh-carte-photo .fdh-vide{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
       .fdh-pct-badge{position:absolute;top:.5rem;right:.5rem;color:#fff;font-weight:800;font-size:.85rem;padding:.2rem .55rem;border-radius:99px;box-shadow:0 4px 10px -4px rgba(0,0,0,.4)}
-      .fdh-grid2{display:flex;flex-wrap:wrap;gap:.7rem;align-items:flex-start;justify-content:flex-start}
+      .fdh-grid2{display:flex;flex-wrap:wrap;gap:.7rem;align-items:stretch;justify-content:flex-start}
       .fdh-grid2 > *{flex:1 1 calc(50% - .35rem);max-width:calc(50% - .35rem);min-width:0}
       .fdh-rayon-bloc{margin-bottom:1.1rem}
       .fdh-rayon-titre{width:100%;background:none;border:0;padding:.2rem .1rem .55rem;display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;cursor:pointer;color:#3A0F38;font-weight:800;font-size:.94rem;text-align:left;line-height:1.25}
       .fdh-rayon-num{background:#F3E7EA;color:#B21F4E;font-size:.72rem;font-weight:800;padding:.05rem .45rem;border-radius:99px}
       .fdh-rayon-tout{margin-left:auto;color:#D62A5E;font-size:.78rem;font-weight:700}
-      .fdh-rayon{display:flex;gap:.6rem;overflow-x:auto;padding:.1rem .1rem .5rem;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+      .fdh-rayon{display:flex;gap:.6rem;align-items:stretch;overflow-x:auto;padding:.1rem .1rem .5rem;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
       .fdh-rayon>.fdh-carte{flex:0 0 40%;max-width:40%;scroll-snap-align:start}
       .fdh-jaime .fdh-carte-b .fdh-carte-photo{aspect-ratio:1 / 1.414}
       .fdh-rayon-vide{color:#9a8b92;font-size:.85rem;padding:.1rem .1rem 1rem}
       .fdh-retour-lien{background:none;border:0;color:#D62A5E;font-weight:700;font-size:.9rem;cursor:pointer;padding:.1rem 0 .6rem}
-      .fdh-carte-b{display:flex;flex-direction:column}
-      .fdh-carte-b .fdh-carte-photo{border:0;padding:0;cursor:pointer;width:100%;aspect-ratio:1 / 1}
+      .fdh-carte-b{display:flex;flex-direction:column;height:100%}
+      .fdh-carte-b .fdh-carte-photo{border:0;padding:0;cursor:pointer;width:100%;aspect-ratio:1 / 1;flex:0 0 auto}
+      .fdh-carte-b .fdh-2btn{margin-top:auto}
       .fdh-2btn{display:flex;gap:.4rem;padding:.15rem .5rem .5rem}
       .fdh-2btn button{flex:1;border-radius:9px;font-size:.8rem;font-weight:800;padding:.4rem 0;cursor:pointer;border:1.5px solid #E4D3D8}
       .fdh-2btn .b-profil{background:#fff;color:#4A1546}
@@ -2086,8 +2089,8 @@ function Style() {
       .fdh-swipe.sort-d{transform:translateX(110%);opacity:0}
       .fdh-swipe.sort-g{transform:translateX(-110%);opacity:0}
       .fdh-swipe-photo{position:relative;border-radius:20px;overflow:hidden;box-shadow:0 20px 50px -20px rgba(58,15,56,.55);aspect-ratio:1 / 1.414;background:#EDE0E4}
-      .fdh-swipe-photo .fdh-photo{width:100%;height:100%;object-fit:cover}
-      .fdh-swipe-photo .fdh-vide{width:100%;height:100%;font-size:5rem}
+      .fdh-swipe-photo .fdh-photo{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
+      .fdh-swipe-photo .fdh-vide{position:absolute;top:0;left:0;width:100%;height:100%;font-size:5rem}
       .fdh-swipe-info{position:absolute;left:0;right:0;bottom:0;padding:1.4rem 1.2rem 1.1rem;color:#fff;background:linear-gradient(to top, rgba(36,10,42,.92), rgba(36,10,42,.55) 55%, transparent)}
       .fdh-swipe-info h2{font-size:1.7rem;margin:0}
       .fdh-swipe-lieu{opacity:.9;font-size:.95rem;margin:.2rem 0 .5rem}
