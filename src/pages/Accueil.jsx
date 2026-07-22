@@ -1773,13 +1773,14 @@ export default function Accueil({ onDeconnexion }) {
   const [nbMsgNonLus, setNbMsgNonLus] = useState(0)
   const [nbNouvJaime, setNbNouvJaime] = useState(0)
 
-  async function voirProfil(id) {
+  async function voirProfil(id, compter = true) {
     const { data } = await supabase.from('profiles').select('*').eq('id', id).single()
     if (data) setFiche(data)
-    if (moi && id !== moi.id) {
-      supabase.from('visites')
+    if (compter && moi && id !== moi.id) {
+      const { error } = await supabase.from('visites')
         .upsert({ visiteur_id: moi.id, profil_id: id, vu_at: new Date().toISOString() },
-          { onConflict: 'visiteur_id,profil_id' }).then(() => {})
+          { onConflict: 'visiteur_id,profil_id' })
+      if (error) console.warn('Visite non enregistrée :', error.message)
     }
   }
   const ouvrirDiscussion = (p) => { setConversationAvec(p); setOnglet('messages') }
@@ -1917,7 +1918,7 @@ export default function Accueil({ onDeconnexion }) {
         {!overlay && onglet === 'messages' && <Messages moi={moi} ouvrir={conversationAvec} setOuvrir={setConversationAvec} onLu={rafraichirBadges} />}
         {!overlay && onglet === 'match' && <MatchAffinites moi={moi} mesReponses={mesReponses} onFaireQuestionnaire={() => ouvrirOverlay('questionnaire')} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} />}
         {!overlay && onglet === 'visites' && <Visites moi={moi} onVoir={voirProfil} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
-        {!overlay && onglet === 'admin' && estAdmin && <Admin onVoir={voirProfil} />}
+        {!overlay && onglet === 'admin' && estAdmin && <Admin onVoir={(id) => voirProfil(id, false)} />}
       </main>
 
       {!overlay && moi && !abonne && (
