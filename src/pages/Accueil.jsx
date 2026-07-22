@@ -1684,7 +1684,7 @@ function Annonces({ moi, onVoir, onDiscuter }) {
   async function charger() {
     setErr('')
     const { data, error } = await supabase.from('annonces')
-      .select('id, auteur_id, contenu, cree_at, modifie_at').order('cree_at', { ascending: false }).limit(100)
+      .select('id, auteur_id, contenu, cree_at, modifie_at, vues').order('cree_at', { ascending: false }).limit(100)
     if (error) { setErr(error.message); setListe([]); return }
     const ids = (data || []).map(a => a.auteur_id)
     let profils = {}
@@ -1695,6 +1695,15 @@ function Annonces({ moi, onVoir, onDiscuter }) {
       for (const p of (ps || [])) profils[p.id] = p
     }
     setListe((data || []).map(a => ({ ...a, p: profils[a.auteur_id] })).filter(a => a.p))
+    // Une vue par personne et par annonce (les doublons sont ignorés)
+    const aVoir = (data || []).filter(a => a.auteur_id !== moi.id)
+      .map(a => ({ annonce_id: a.id, visiteur_id: moi.id }))
+    if (aVoir.length) {
+      try {
+        await supabase.from('annonces_vues')
+          .upsert(aVoir, { onConflict: 'annonce_id,visiteur_id', ignoreDuplicates: true })
+      } catch (_) {}
+    }
   }
   useEffect(() => { if (moi) charger() }, [moi]) // eslint-disable-line
 
@@ -1789,9 +1798,9 @@ function Annonces({ moi, onVoir, onDiscuter }) {
                   )}
                 </div>
                 <p className="fdh-annonce-txt">{a.contenu}</p>
-                {!moi_meme && (
-                  <button className="fdh-annonce-disc" onClick={() => onDiscuter(p)}>💬 Discute avec moi</button>
-                )}
+                {moi_meme
+                  ? <div className="fdh-annonce-vues">👁️ {a.vues || 0} vue{(a.vues || 0) > 1 ? 's' : ''}</div>
+                  : <button className="fdh-annonce-disc" onClick={() => onDiscuter(p)}>💬 Discute avec moi</button>}
               </div>
             )
           })}
@@ -2572,7 +2581,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 22/07 · #AK</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 22/07 · #AL</div>
           </div>
         </div>
       )}
@@ -2671,6 +2680,8 @@ function Style() {
       .fdh-annonce-lieu{font-size:.75rem;color:#7A6B74;margin:.1rem 0}
       .fdh-annonce-ic{background:none;border:0;font-size:1.05rem;cursor:pointer;padding:.1rem .2rem;line-height:1}
       .fdh-annonce-txt{margin:.7rem 0 0;font-size:.92rem;color:#3A0F38;line-height:1.6;white-space:pre-wrap}
+      .fdh-annonce-vues{margin-top:.8rem;text-align:center;font-size:.85rem;font-weight:800;color:#8a6a26;
+        background:#FBF1DF;border-radius:12px;padding:.6rem}
       .fdh-annonce-disc{width:100%;margin-top:.8rem;background:#D62A5E;color:#fff;border:0;border-radius:12px;
         padding:.7rem;font-weight:800;font-size:.92rem;cursor:pointer}
       .fdh-annonce-disc:hover{background:#B21F4E}
