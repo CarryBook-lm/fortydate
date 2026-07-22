@@ -379,34 +379,39 @@ const MOIS_NOMS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
   'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
 
 function ChampNaissance({ value, onChange }) {
-  const [a, m, j] = (value || '').split('-')
+  const [va, vm, vj] = (value || '').split('-')
+  const [j, setJ] = useState(vj ? String(Number(vj)) : '')
+  const [m, setM] = useState(vm ? String(Number(vm)) : '')
+  const [a, setA] = useState(va || '')
+
   const anneeMax = new Date().getFullYear() - 40   // 40 ans minimum
   const anneeMin = new Date().getFullYear() - 90
   const annees = []
   for (let x = anneeMax; x >= anneeMin; x--) annees.push(x)
   const nbJours = (a && m) ? new Date(Number(a), Number(m), 0).getDate() : 31
 
-  const maj = (nj, nm, na) => {
-    if (!nj || !nm || !na) { onChange(''); return }
-    onChange(`${na}-${String(nm).padStart(2, '0')}-${String(nj).padStart(2, '0')}`)
+  // On remonte la date au parent seulement quand les 3 champs sont remplis
+  const remonter = (nj, nm, na) => {
+    if (nj && nm && na) onChange(`${na}-${String(nm).padStart(2, '0')}-${String(nj).padStart(2, '0')}`)
+    else onChange('')
   }
 
   return (
     <>
       <label className="fd-l">Date de naissance</label>
       <div style={{ display: 'flex', gap: '.5rem' }}>
-        <select className="fd-in" style={{ flex: '0 0 27%' }} value={j ? Number(j) : ''}
-          onChange={e => maj(e.target.value, m, a)}>
+        <select className="fd-in" style={{ flex: '0 0 27%' }} value={j}
+          onChange={e => { setJ(e.target.value); remonter(e.target.value, m, a) }}>
           <option value="">Jour</option>
           {Array.from({ length: nbJours }, (_, i) => i + 1).map(x => <option key={x} value={x}>{x}</option>)}
         </select>
-        <select className="fd-in" style={{ flex: 1 }} value={m ? Number(m) : ''}
-          onChange={e => maj(j, e.target.value, a)}>
+        <select className="fd-in" style={{ flex: 1 }} value={m}
+          onChange={e => { setM(e.target.value); remonter(j, e.target.value, a) }}>
           <option value="">Mois</option>
           {MOIS_NOMS.map((nom, i) => <option key={nom} value={i + 1}>{nom}</option>)}
         </select>
-        <select className="fd-in" style={{ flex: '0 0 30%' }} value={a || ''}
-          onChange={e => maj(j, m, e.target.value)}>
+        <select className="fd-in" style={{ flex: '0 0 30%' }} value={a}
+          onChange={e => { setA(e.target.value); remonter(j, m, e.target.value) }}>
           <option value="">Année</option>
           {annees.map(x => <option key={x} value={x}>{x}</option>)}
         </select>
