@@ -73,7 +73,7 @@ export default function Inscription({ onComplete }) {
     pays_residence: '', ville: '', recherche_mode: 'mon_pays', recherche_pays: [],
     situation: '', enfants: '', profession: '',
     type_relation: '', valeurs: [],
-    photo_principale: '', bio: '', interets: [], langues: [], religion: '',
+    photo_principale: '', bio: '', interets: [], langues: [], religion: '', selfie_envoye: false,
   })
 
   const set = (k, v) => setF(p => ({ ...p, [k]: v }))
@@ -173,6 +173,22 @@ export default function Inscription({ onComplete }) {
       set('photo_principale', url)
     } catch (e) {
       setErr("Photo : crée d'abord un bucket public 'avatars' dans Supabase Storage.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Selfie de vérification : stocké à part, jamais affiché sur le site
+  async function envoyerSelfie(file) {
+    setLoading(true); setErr('')
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const url = await uploadPhotoOptimisee(file, user.id + '-verif')
+      const { error } = await supabase.from('profiles').update({ selfie_url: url }).eq('id', user.id)
+      if (error) throw error
+      set('selfie_envoye', true)
+    } catch (e) {
+      setErr("Envoi impossible. Réessaie, ou passe cette étape.")
     } finally {
       setLoading(false)
     }
@@ -305,10 +321,23 @@ export default function Inscription({ onComplete }) {
 
         {/* ---------- ÉCRAN 6 ---------- */}
         {step === 6 && (
-          <Ecran titre="Obtiens ton badge vérifié" sous="Un profil vérifié inspire confiance et reçoit plus de messages.">
-            <p className="fd-info">Prends un selfie pour confirmer que c'est bien toi. Notre équipe le compare à ta photo de profil. Tu peux aussi le faire plus tard depuis ton espace.</p>
-            <input className="fd-in" type="file" accept="image/*" capture="user"
-              onChange={e => e.target.files[0] && uploadPhoto(e.target.files[0])} />
+          <Ecran titre="Obtiens ton badge vérifié" sous="Facultatif — mais un profil vérifié inspire confiance et reçoit plus de messages.">
+            <p className="fd-info">
+              🔒 <b>Cette photo restera privée.</b> Elle ne s'affichera jamais sur le site, ne sera visible
+              par aucun autre membre, et ne remplacera pas ta photo de profil. Elle sert uniquement à notre
+              équipe pour confirmer que c'est bien toi, puis à t'attribuer le badge ✓.
+            </p>
+            {f.selfie_envoye ? (
+              <p className="fd-info" style={{ background: '#eafaf0', color: '#1a7f45' }}>
+                ✓ Selfie reçu. Notre équipe le vérifie sous peu — tu peux terminer ton inscription.
+              </p>
+            ) : (
+              <input className="fd-in" type="file" accept="image/*" capture="user"
+                onChange={e => e.target.files[0] && envoyerSelfie(e.target.files[0])} />
+            )}
+            <p className="fd-info" style={{ background: 'transparent', padding: '.6rem 0 0', fontSize: '.85rem' }}>
+              Tu préfères le faire plus tard ? Appuie simplement sur « Passer ».
+            </p>
           </Ecran>
         )}
 

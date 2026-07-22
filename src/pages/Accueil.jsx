@@ -145,14 +145,31 @@ function estAbonneP(p) {
 }
 
 // Coche rose « Sérénité » à afficher à côté du prénom
-function Badge({ p, size = 18 }) {
-  if (!estAbonneP(p)) return null
+// ✓ bleu = identité vérifiée (confiance) ; ⭐ or = membre VIP (statut)
+function BadgeVerifie({ p, size = 18 }) {
+  if (!p?.verifie) return null
   return (
-    <svg className="fdh-badge" width={size} height={size} viewBox="0 0 24 24" aria-label="Membre Sérénité" style={{ verticalAlign: 'middle', marginLeft: 4, flexShrink: 0, minWidth: size, display: 'inline-block' }}>
-      <path fill="#D62A5E" d="M12 1.5l2.3 1.7 2.85-.15 1 2.68 2.5 1.37-.62 2.79 1.72 2.28-1.72 2.28.62 2.79-2.5 1.37-1 2.68-2.85-.15L12 22.5l-2.3-1.7-2.85.15-1-2.68-2.5-1.37.62-2.79L2.25 12l1.72-2.28-.62-2.79 2.5-1.37 1-2.68 2.85.15L12 1.5z"/>
+    <svg className="fdh-badge" width={size} height={size} viewBox="0 0 24 24" aria-label="Profil vérifié"
+      style={{ verticalAlign: 'middle', marginLeft: 4, flexShrink: 0, minWidth: size, display: 'inline-block' }}>
+      <path fill="#1D9BF0" d="M12 1.5l2.3 1.7 2.85-.15 1 2.68 2.5 1.37-.62 2.79 1.72 2.28-1.72 2.28.62 2.79-2.5 1.37-1 2.68-2.85-.15L12 22.5l-2.3-1.7-2.85.15-1-2.68-2.5-1.37.62-2.79L2.25 12l1.72-2.28-.62-2.79 2.5-1.37 1-2.68 2.85.15L12 1.5z"/>
       <path fill="#fff" d="M10.6 15.2l-3-3 1.4-1.4 1.6 1.6 3.9-3.9 1.4 1.4-5.3 5.3z"/>
     </svg>
   )
+}
+
+function BadgeVip({ p, size = 18 }) {
+  if (!estAbonneP(p)) return null
+  return (
+    <svg className="fdh-badge" width={size} height={size} viewBox="0 0 24 24" aria-label="Membre VIP"
+      style={{ verticalAlign: 'middle', marginLeft: 4, flexShrink: 0, minWidth: size, display: 'inline-block' }}>
+      <path fill="#C69A4E" d="M12 2.1l2.7 5.6 6.1.9-4.4 4.3 1.05 6.1L12 16.1l-5.45 2.9L7.6 12.9 3.2 8.6l6.1-.9L12 2.1z"/>
+    </svg>
+  )
+}
+
+// Les deux badges, vérifié en premier (la confiance prime sur le statut)
+function Badge({ p, size = 18 }) {
+  return <><BadgeVerifie p={p} size={size} /><BadgeVip p={p} size={size} /></>
 }
 
 // Listes pour l'édition du profil
@@ -210,10 +227,14 @@ function Presence({ p, avecTexte = false }) {
 async function ajouterPresence(liste) {
   const ids = (liste || []).map(x => x.id).filter(Boolean)
   if (ids.length === 0) return liste || []
-  const { data } = await supabase.from('profiles').select('id, derniere_activite').in('id', ids)
+  const { data } = await supabase.from('profiles').select('id, derniere_activite, verifie').in('id', ids)
   const map = {}
-  for (const r of (data || [])) map[r.id] = r.derniere_activite
-  return (liste || []).map(x => ({ ...x, derniere_activite: map[x.id] || null }))
+  for (const r of (data || [])) map[r.id] = r
+  return (liste || []).map(x => ({
+    ...x,
+    derniere_activite: map[x.id]?.derniere_activite || null,
+    verifie: map[x.id]?.verifie ?? x.verifie,
+  }))
 }
 
 function Avatar({ url, prenom, taille = '100%' }) {
@@ -307,6 +328,12 @@ function FicheProfil({ profil, moi, onFermer }) {
           <h2 className="fdh-fiche-nom">{profil.prenom}{age ? `, ${age}` : ''}<Badge p={profil} size={22} /></h2>
           <p className="fdh-fiche-lieu">📍 {profil.ville ? profil.ville + ' · ' : ''}{NOM_PAYS[profil.pays_residence] || profil.pays_residence}</p>
           <p className="fdh-fiche-presence"><Presence p={profil} avecTexte /></p>
+          {(profil.verifie || estAbonneP(profil)) && (
+            <div className="fdh-etiquettes">
+              {profil.verifie && <span className="fdh-etiq verif"><BadgeVerifie p={profil} size={15} /> Profil vérifié</span>}
+              {estAbonneP(profil) && <span className="fdh-etiq vip"><BadgeVip p={profil} size={15} /> Membre VIP</span>}
+            </div>
+          )}
           {profil.bio && <p className="fdh-fiche-bio">« {profil.bio} »</p>}
 
           {chips.length > 0 && (
@@ -410,7 +437,7 @@ function Proximite({ moi, onVoir }) {
       try {
         setProfils(null)
         let q = supabase.from('profiles')
-          .select('id, prenom, date_naissance, photo_principale, pays_residence, situation, religion, derniere_activite, abo_statut, abo_expire_at')
+          .select('id, prenom, date_naissance, photo_principale, pays_residence, situation, religion, derniere_activite, verifie, abo_statut, abo_expire_at')
           .neq('id', moi.id)
 
         if (paysPrecis) q = q.eq('pays_residence', paysPrecis)
@@ -561,7 +588,7 @@ function Rencontres({ moi }) {
       try {
         const { data: vus } = await supabase.from('likes').select('cible_id').eq('auteur_id', moi.id)
         const exclus = new Set((vus || []).map(x => x.cible_id)); exclus.add(moi.id)
-        const { data, error } = await requeteCandidats(moi, 'id, prenom, date_naissance, pays_residence, ville, photo_principale, bio, interets, derniere_activite, abo_statut, abo_expire_at')
+        const { data, error } = await requeteCandidats(moi, 'id, prenom, date_naissance, pays_residence, ville, photo_principale, bio, interets, derniere_activite, verifie, abo_statut, abo_expire_at')
         if (error) throw error
         if (!annule) setProfils((data || []).filter(p => !exclus.has(p.id)))
       } catch (e) { if (!annule) setErr(e.message || 'Erreur.') }
@@ -759,7 +786,7 @@ function MatchAffinites({ moi, mesReponses, onFaireQuestionnaire, onVoir, onDisc
     let annule = false
     ;(async () => {
       try {
-        const { data: cands, error } = await requeteCandidats(moi, 'id, prenom, date_naissance, pays_residence, ville, photo_principale, derniere_activite, abo_statut, abo_expire_at')
+        const { data: cands, error } = await requeteCandidats(moi, 'id, prenom, date_naissance, pays_residence, ville, photo_principale, derniere_activite, verifie, abo_statut, abo_expire_at')
         if (error) throw error
         const ids = (cands || []).map(c => c.id)
         let affMap = {}
@@ -1663,6 +1690,7 @@ function Admin({ onVoir }) {
   const [msg, setMsg] = useState('')
   // Une seule période, partagée par toutes les vues
   const [periode, setPeriode] = useState('jour')
+  const [aVerifier, setAVerifier] = useState(null)
   const [actions, setActions] = useState(null)
   const [chargeAct, setChargeAct] = useState(false)
   const [errAct, setErrAct] = useState('')
@@ -1732,6 +1760,27 @@ function Admin({ onVoir }) {
     })()
     return () => { annule = true }
   }, [vue, periode]) // eslint-disable-line
+
+  // File d'attente des vérifications (selfie envoyé, pas encore validé)
+  useEffect(() => {
+    if (vue !== 'verif') return
+    let annule = false
+    ;(async () => {
+      setAVerifier(null)
+      const { data } = await supabase.from('profiles')
+        .select('id, prenom, date_naissance, photo_principale, selfie_url, verifie, pays_residence')
+        .not('selfie_url', 'is', null).eq('verifie', false).limit(50)
+      if (!annule) setAVerifier(data || [])
+    })()
+    return () => { annule = true }
+  }, [vue])
+
+  async function validerProfil(id, ok) {
+    setMsg('')
+    const { error } = await supabase.rpc('valider_profil', { p_id: id, p_ok: ok })
+    if (error) { setMsg("Validation refusée : vérifie l'email admin dans la fonction SQL."); return }
+    setAVerifier(l => (l || []).filter(x => x.id !== id))
+  }
 
   // Ouvrir l'onglet Signalé marque les signalements comme vus (la pastille s'éteint)
   useEffect(() => {
@@ -1822,6 +1871,7 @@ function Admin({ onVoir }) {
         <button className={'fdh-sous' + (vue === 'bord' ? ' on' : '')} onClick={() => setVue('bord')}>Bord</button>
         <button className={'fdh-sous' + (vue === 'membres' ? ' on' : '')} onClick={() => setVue('membres')}>Users</button>
         <button className={'fdh-sous' + (vue === 'pays' ? ' on' : '')} onClick={() => setVue('pays')}>Pays</button>
+        <button className={'fdh-sous' + (vue === 'verif' ? ' on' : '')} onClick={() => setVue('verif')}>Vérif</button>
         <button className={'fdh-sous' + (vue === 'paiements' ? ' on' : '')} onClick={() => setVue('paiements')}>Paiement</button>
         <button className={'fdh-sous' + (vue === 'signal' ? ' on' : '')} onClick={() => setVue('signal')}>
           Signalé{nouveauxSignal > 0 && <span className="fdh-sous-pastille">{nouveauxSignal}</span>}
@@ -1893,6 +1943,32 @@ function Admin({ onVoir }) {
               </div>
             ))}
             {membresFiltres.length === 0 && <p className="fdh-msg">Aucun membre.</p>}
+          </div>
+        </div>
+      )}
+
+      {vue === 'verif' && (
+        <div>
+          {aVerifier === null && <p className="fdh-msg">Chargement…</p>}
+          {aVerifier && aVerifier.length === 0 && <p className="fdh-msg">Aucune demande en attente. 🕊️</p>}
+          <div className="fdh-adm-liste">
+            {(aVerifier || []).map(v => (
+              <div key={v.id} className="fdh-verif">
+                <div className="fdh-verif-photos">
+                  <figure><img src={v.photo_principale} alt="" /><figcaption>Photo de profil</figcaption></figure>
+                  <figure><img src={v.selfie_url} alt="" /><figcaption>Selfie privé</figcaption></figure>
+                </div>
+                <div className="fdh-verif-bas">
+                  <div className="fdh-adm-nom" onClick={() => onVoir(v.id)}>
+                    {v.prenom}{ageDepuis(v.date_naissance) ? `, ${ageDepuis(v.date_naissance)}` : ''}
+                  </div>
+                  <div style={{ display: 'flex', gap: '.4rem' }}>
+                    <button className="fdh-adm-btn" onClick={() => validerProfil(v.id, false)}>Refuser</button>
+                    <button className="fdh-adm-btn ok" onClick={() => validerProfil(v.id, true)}>Valider ✓</button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -2384,7 +2460,19 @@ function Style() {
       .fdh-presence{display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;color:#9a8b92;font-weight:600}
       .fdh-presence.on{color:#1a9e52}
       .fdh-vu{padding:0 .5rem .35rem;font-size:.72rem;line-height:1}
-      .fdh-fiche-presence{margin:-.5rem 0 .8rem}
+      .fdh-fiche-presence{margin:-.5rem 0 .5rem}
+      .fdh-verif{background:#fff;border:1.5px solid #E4D3D8;border-radius:14px;padding:.7rem;margin-bottom:.6rem}
+      .fdh-verif-photos{display:flex;gap:.5rem}
+      .fdh-verif-photos figure{flex:1;margin:0;text-align:center}
+      .fdh-verif-photos img{width:100%;aspect-ratio:1/1.2;object-fit:cover;border-radius:10px;background:#EDE0E4}
+      .fdh-verif-photos figcaption{font-size:.68rem;color:#9a8b92;margin-top:.2rem}
+      .fdh-verif-bas{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-top:.6rem;flex-wrap:wrap}
+      .fdh-adm-btn.ok{background:#1a9e52;color:#fff;border-color:#1a9e52}
+      .fdh-etiquettes{display:flex;gap:.4rem;flex-wrap:wrap;margin:0 0 .9rem}
+      .fdh-etiq{display:inline-flex;align-items:center;gap:.2rem;font-size:.76rem;font-weight:800;
+        padding:.3rem .6rem;border-radius:99px}
+      .fdh-etiq.verif{background:#E8F4FD;color:#0f6ba8}
+      .fdh-etiq.vip{background:#FBF1DF;color:#8a6a26}
       .fdh-nom-txt{display:inline-flex;align-items:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
       .fdh-msg{text-align:center;color:#7A6B74;padding:2rem}
