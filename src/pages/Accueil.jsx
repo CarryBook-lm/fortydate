@@ -220,6 +220,21 @@ function FicheProfil({ profil, moi, onFermer }) {
   const [sigMsg, setSigMsg] = useState('')
   const estMoi = moi && profil.id === moi.id
 
+  // J'aime depuis la fiche
+  const [aimeEtat, setAimeEtat] = useState('') // '' | 'envoi' | 'fait'
+  const [matchFait, setMatchFait] = useState(false)
+  async function aimer() {
+    if (aimeEtat) return
+    setAimeEtat('envoi')
+    try {
+      const { error } = await supabase.from('likes').insert({ auteur_id: moi.id, cible_id: profil.id, aime: true })
+      if (error && !/duplicate|unique/i.test(error.message || '')) throw error
+      const { data } = await supabase.rpc('est_un_match', { p_cible: profil.id })
+      if (data === true) setMatchFait(true)
+      setAimeEtat('fait')
+    } catch (e) { setAimeEtat('') }
+  }
+
   async function envoyerSignalement() {
     const objet = [raison, detail.trim()].filter(Boolean).join(' — ')
     if (!objet) { setSigMsg('Indique la raison du signalement.'); return }
@@ -276,6 +291,15 @@ function FicheProfil({ profil, moi, onFermer }) {
               <div className="fdh-chips">{profil.langues.map(v => <span key={v}>{v}</span>)}</div></div>)}
 
           {!estMoi && (
+            <button className={'fdh-fiche-aime' + (aimeEtat === 'fait' ? ' fait' : '')}
+              disabled={aimeEtat !== ''} onClick={aimer}>
+              {aimeEtat === 'envoi' ? '…'
+                : aimeEtat === 'fait' ? (matchFait ? "🎉 C'est un match !" : "❤ J'aime envoyé")
+                : `❤ J'aime ${profil.prenom}`}
+            </button>
+          )}
+
+          {!estMoi && (
             <button className="fdh-signaler" onClick={() => { setSignalerOuvert(true); setSigMsg('') }}>🚩 Signaler ce profil</button>
           )}
         </div>
@@ -321,37 +345,55 @@ function FicheProfil({ profil, moi, onFermer }) {
 function Proximite({ moi, onVoir }) {
   const [profils, setProfils] = useState(null)
   const [err, setErr] = useState('')
+  const [zone, setZone] = useState('pays') // pays | monde
   useEffect(() => {
     if (!moi) return
     let annule = false
     ;(async () => {
       try {
-        const { data, error } = await supabase.from('profiles')
-          .select('id, prenom, date_naissance, photo_principale, abo_statut, abo_expire_at')
-          .neq('id', moi.id).limit(100)
+        setProfils(null)
+        let q = supabase.from('profiles')
+          .select('id, prenom, date_naissance, photo_principale, pays_residence, abo_statut, abo_expire_at')
+          .neq('id', moi.id)
+        if (zone === 'pays' && moi.pays_residence) q = q.eq('pays_residence', moi.pays_residence)
+        const { data, error } = await q.limit(100)
         if (error) throw error
         if (!annule) setProfils(data || [])
       } catch (e) { if (!annule) setErr(e.message || 'Erreur.') }
     })()
     return () => { annule = true }
-  }, [moi])
+  }, [moi, zone])
 
-  if (err) return <div className="fdh-msg">{err}</div>
-  if (profils === null) return <div className="fdh-msg">Chargement…</div>
+  const filtre = (
+    <div className="fdh-zone">
+      <button className={'fdh-zone-b' + (zone === 'pays' ? ' on' : '')} onClick={() => setZone('pays')}>
+        🏠 Mon pays
+      </button>
+      <button className={'fdh-zone-b' + (zone === 'monde' ? ' on' : '')} onClick={() => setZone('monde')}>
+        🌍 Tous les pays
+      </button>
+    </div>
+  )
+
+  if (err) return <div>{filtre}<div className="fdh-msg">{err}</div></div>
+  if (profils === null) return <div>{filtre}<div className="fdh-msg">Chargement…</div></div>
   if (profils.length === 0)
-    return <div className="fdh-vide-etat"><div className="fdh-vide-emoji">🕊️</div>
-      <p>Aucun profil compatible pour l'instant.</p>
-      <p className="fdh-vide-sous">Invite d'autres personnes à s'inscrire — ils apparaîtront ici.</p></div>
+    return <div>{filtre}<div className="fdh-vide-etat"><div className="fdh-vide-emoji">🕊️</div>
+      <p>Aucun profil {zone === 'pays' ? 'dans ton pays' : ''} pour l'instant.</p>
+      <p className="fdh-vide-sous">{zone === 'pays' ? 'Essaie « Tous les pays » pour élargir ta recherche.' : "Invite d'autres personnes à s'inscrire — ils apparaîtront ici."}</p></div></div>
 
   return (
-    <div className="fdh-grid">
-      {profils.map(p => (
-        <button key={p.id} className="fdh-carte" onClick={() => onVoir(p.id)}>
-          <div className="fdh-carte-photo"><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></div>
-          <div className="fdh-nom"><span className="fdh-point" />
-            <span className="fdh-nom-txt">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} /></span></div>
-        </button>
-      ))}
+    <div>
+      {filtre}
+      <div className="fdh-grid">
+        {profils.map(p => (
+          <button key={p.id} className="fdh-carte" onClick={() => onVoir(p.id)}>
+            <div className="fdh-carte-photo"><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></div>
+            <div className="fdh-nom"><span className="fdh-point" />
+              <span className="fdh-nom-txt">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} /></span></div>
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -2182,6 +2224,15 @@ function Style() {
       .fdh-contact-mail{background:#F7EDF0;border:1.5px solid #E4D3D8;border-radius:14px;padding:.9rem;text-align:center;margin-bottom:.4rem}
       .fdh-contact-lbl{font-size:.75rem;color:#7A6B74;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
       .fdh-contact-adr{display:block;margin-top:.3rem;font-size:1rem;font-weight:800;color:#4A1546;word-break:break-all;text-decoration:none}
+      .fdh-zone{display:flex;gap:.5rem;margin-bottom:.9rem}
+      .fdh-zone-b{flex:1;background:#fff;border:1.5px solid #E4D3D8;border-radius:12px;padding:.6rem .4rem;
+        font-weight:800;font-size:.86rem;color:#7A6B74;cursor:pointer;white-space:nowrap}
+      .fdh-zone-b.on{background:#4A1546;color:#fff;border-color:#4A1546}
+      .fdh-fiche-aime{width:100%;margin-top:1rem;padding:.85rem;border:0;border-radius:12px;
+        background:#D62A5E;color:#fff;font-weight:800;font-size:1rem;cursor:pointer}
+      .fdh-fiche-aime:hover{background:#B21F4E}
+      .fdh-fiche-aime.fait{background:#fff;color:#D62A5E;border:1.5px solid #D62A5E}
+      .fdh-fiche-aime:disabled{cursor:default;opacity:.95}
       .fdh-adm-tete{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:.8rem}
       .fdh-adm-tete .fdh-admin-titre{margin:0}
       .fdh-per-sel{margin-left:auto;background:#fff;border:1.5px solid #E4D3D8;border-radius:10px;
