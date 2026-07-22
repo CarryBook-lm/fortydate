@@ -2111,6 +2111,82 @@ function Avantages({ moi, onClose, onFaireAbo }) {
   )
 }
 
+function Verification({ moi, onClose }) {
+  const [etat, setEtat] = useState(
+    moi?.verifie ? 'verifie' : (moi?.selfie_url ? 'attente' : 'vide')
+  )
+  const [envoi, setEnvoi] = useState(false)
+  const [err, setErr] = useState('')
+
+  async function envoyer(file) {
+    setEnvoi(true); setErr('')
+    try {
+      const url = await uploadPhotoOptimisee(file, moi.id + '-verif')
+      const { error } = await supabase.from('profiles').update({ selfie_url: url }).eq('id', moi.id)
+      if (error) throw error
+      setEtat('attente')
+    } catch (e) {
+      setErr("Envoi impossible. Réessaie dans un instant.")
+    } finally { setEnvoi(false) }
+  }
+
+  return (
+    <div className="fdh-modal-fond" onClick={onClose}>
+      <div className="fdh-modal" onClick={e => e.stopPropagation()}>
+        <button className="fdh-modal-x" onClick={onClose}>✕</button>
+        <h2 className="fdh-quest-titre">✓ Faire vérifier mon profil</h2>
+
+        {etat === 'verifie' && (
+          <div className="fdh-modal-fin">
+            <div className="fdh-modal-emoji">✅</div>
+            <h2>Ton profil est vérifié</h2>
+            <p>Le badge ✓ bleu s'affiche à côté de ton prénom. Les autres membres savent que c'est bien toi.</p>
+          </div>
+        )}
+
+        {etat === 'attente' && (
+          <div className="fdh-modal-fin">
+            <div className="fdh-modal-emoji">⏳</div>
+            <h2>Selfie bien reçu</h2>
+            <p>Notre équipe l'examine. Le badge ✓ apparaîtra sur ton profil dès la validation.</p>
+            <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '.8rem' }}
+              onClick={() => setEtat('vide')}>Envoyer un autre selfie</button>
+          </div>
+        )}
+
+        {etat === 'vide' && (
+          <>
+            <p className="fdh-manuel-intro">
+              Le badge ✓ bleu montre aux autres membres que tu es bien la personne sur tes photos.
+              Un profil vérifié inspire confiance et reçoit nettement plus de messages.
+            </p>
+            <div className="fdh-manuel-bloc">
+              <div className="fdh-manuel-titre"><span>🔒</span>Ta photo reste privée</div>
+              <p className="fdh-manuel-txt">
+                Ce selfie ne s'affichera <b>jamais</b> sur le site. Aucun autre membre ne le verra,
+                et il ne remplacera pas ta photo de profil. Il sert uniquement à notre équipe
+                pour confirmer que c'est bien toi.
+              </p>
+            </div>
+            <div className="fdh-manuel-bloc">
+              <div className="fdh-manuel-titre"><span>📸</span>Comment faire</div>
+              <p className="fdh-manuel-txt">
+                Prends un selfie simple, visage bien visible, sans lunettes de soleil ni chapeau.
+                Il doit ressembler à ta photo de profil.
+              </p>
+            </div>
+            {err && <div className="fdh-abo-msg err">{err}</div>}
+            <label className="fdh-f-l">Ton selfie</label>
+            <input className="fdh-f-in" type="file" accept="image/*" capture="user" disabled={envoi}
+              onChange={e => e.target.files[0] && envoyer(e.target.files[0])} />
+            {envoi && <p className="fdh-msg">Envoi en cours…</p>}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function Contact({ onClose }) {
   const EMAIL = 'fortydate.com@gmail.com'
   const [copie, setCopie] = useState(false)
@@ -2199,6 +2275,7 @@ export default function Accueil({ onDeconnexion }) {
   const [reglesOuvert, setReglesOuvert] = useState(false)
   const [contactOuvert, setContactOuvert] = useState(false)
   const [avantagesOuvert, setAvantagesOuvert] = useState(false)
+  const [verifOuvert, setVerifOuvert] = useState(false)
   const [fiche, setFiche] = useState(null)  // profil consulté
   const [nbMsgNonLus, setNbMsgNonLus] = useState(0)
   const [nbNouvJaime, setNbNouvJaime] = useState(0)
@@ -2325,6 +2402,7 @@ export default function Accueil({ onDeconnexion }) {
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setManuelOuvert(true) }}>📖 Comment utiliser FortyDate</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setReglesOuvert(true) }}>📜 Règles du site</button>
+            <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setVerifOuvert(true) }}>{moi?.verifie ? '✅ Profil vérifié' : '✓ Faire vérifier mon profil'}</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setAvantagesOuvert(true) }}>⭐ Gratuit ou Sérénité ?</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setContactOuvert(true) }}>✉️ Nous contacter</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
@@ -2378,6 +2456,7 @@ export default function Accueil({ onDeconnexion }) {
       {manuelOuvert && <Manuel onClose={() => setManuelOuvert(false)} />}
       {reglesOuvert && <Regles onClose={() => setReglesOuvert(false)} />}
       {contactOuvert && <Contact onClose={() => setContactOuvert(false)} />}
+      {verifOuvert && <Verification moi={moi} onClose={() => setVerifOuvert(false)} />}
       {avantagesOuvert && <Avantages moi={moi} onClose={() => setAvantagesOuvert(false)} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
     </div>
   )
