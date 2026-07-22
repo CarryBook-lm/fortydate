@@ -1335,6 +1335,15 @@ function MotDePasse({ onClose }) {
 
 /* ============================================================ */
 /* ---------------- Page S.Admin (réservée à l'admin) ---------------- */
+// [cle, emoji, libelle, champ renvoye par admin_actions, description]
+const ONGLETS_ACTION = [
+  ['pwa', '📲', 'PWA', 'pwa', "Membres qui ont installé l'application"],
+  ['ecrit', '✍️', 'Écrit', 'ecrit', 'Membres qui ont écrit un message'],
+  ['affin', '✨', "Affin'", 'affinites', 'Membres qui ont répondu au questionnaire'],
+  ['match', '💞', 'Match', 'matchs', 'Matchs créés'],
+  ['enligne', '🟢', 'En ligne', 'en_ligne', 'Membres actifs sur la période'],
+]
+
 function Admin({ onVoir }) {
   const [vue, setVue] = useState('stats') // stats | membres | paiements
   const [membres, setMembres] = useState(null)
@@ -1346,24 +1355,32 @@ function Admin({ onVoir }) {
   const [perStats, setPerStats] = useState('jour')
   const [perMembres, setPerMembres] = useState('jour')
   const [perPaie, setPerPaie] = useState('jour')
+  // Onglet « Actions des membres »
+  const [perAct, setPerAct] = useState('jour')
+  const [sousAct, setSousAct] = useState('pwa')
+  const [actions, setActions] = useState(null)
+  const [chargeAct, setChargeAct] = useState(false)
+  const [errAct, setErrAct] = useState('')
 
-  // Début de période selon le choix
-  function debutPeriode(p) {
-    const d = new Date()
-    d.setHours(0, 0, 0, 0)
-    if (p === 'jour') return d
-    if (p === 'semaine') { const j = (d.getDay() + 6) % 7; d.setDate(d.getDate() - j); return d } // lundi
-    if (p === 'mois') { d.setDate(1); return d }
-    if (p === 'annee') { d.setMonth(0, 1); return d }
-    return null // tout
+  // Bornes de la période choisie (début inclus, fin exclue)
+  function bornes(p) {
+    const d = new Date(); d.setHours(0, 0, 0, 0)
+    const demain = new Date(d); demain.setDate(demain.getDate() + 1)
+    if (p === 'jour') return { debut: d, fin: demain }
+    if (p === 'hier') { const h = new Date(d); h.setDate(h.getDate() - 1); return { debut: h, fin: d } }
+    if (p === 'semaine') { const s = new Date(d); s.setDate(s.getDate() - ((d.getDay() + 6) % 7)); return { debut: s, fin: demain } }
+    if (p === 'mois') { const m = new Date(d); m.setDate(1); return { debut: m, fin: demain } }
+    if (p === 'annee') { const a = new Date(d); a.setMonth(0, 1); return { debut: a, fin: demain } }
+    return { debut: null, fin: null } // tout
   }
   const dansPeriode = (dateStr, p) => {
-    if (p === 'tout') return true
+    const { debut, fin } = bornes(p)
+    if (!debut) return true
     if (!dateStr) return false
-    const deb = debutPeriode(p)
-    return new Date(dateStr) >= deb
+    const t = new Date(dateStr)
+    return t >= debut && t < fin
   }
-  const PERIODES = [['jour', "Aujourd'hui"], ['semaine', 'Semaine'], ['mois', 'Mois'], ['annee', 'Année'], ['tout', 'Tout']]
+  const PERIODES = [['jour', "Aujourd'hui"], ['hier', 'Hier'], ['semaine', 'Semaine'], ['mois', 'Mois'], ['annee', 'Année'], ['tout', 'Tout']]
   const FiltrePeriode = ({ val, set }) => (
     <div className="fdh-periode">
       {PERIODES.map(([k, lbl]) => (
@@ -1393,6 +1410,25 @@ function Admin({ onVoir }) {
   }, [])
 
   const abonneActif = (x) => x?.abo_statut === 'actif' && x?.abo_expire_at && new Date(x.abo_expire_at) > new Date()
+
+  // Chargement des chiffres « Actions des membres » (fonction SQL admin_actions)
+  useEffect(() => {
+    if (vue !== 'actions') return
+    let annule = false
+    ;(async () => {
+      setChargeAct(true); setErrAct('')
+      const { debut, fin } = bornes(perAct)
+      const { data, error } = await supabase.rpc('admin_actions', {
+        p_debut: debut ? debut.toISOString() : null,
+        p_fin: fin ? fin.toISOString() : null,
+      })
+      if (annule) return
+      if (error) { setErrAct("Lance d'abord le SQL admin_actions dans Supabase."); setActions(null) }
+      else setActions(data)
+      setChargeAct(false)
+    })()
+    return () => { annule = true }
+  }, [vue, perAct]) // eslint-disable-line
 
   // Statistiques (sur la période choisie pour l'onglet Stats)
   const stats = (() => {
@@ -1461,7 +1497,8 @@ function Admin({ onVoir }) {
       <h2 className="fdh-admin-titre">🛡️ Espace Admin</h2>
       <div className="fdh-sousongl">
         <button className={'fdh-sous' + (vue === 'stats' ? ' on' : '')} onClick={() => setVue('stats')}>Stats</button>
-        <button className={'fdh-sous' + (vue === 'membres' ? ' on' : '')} onClick={() => setVue('membres')}>Membres</button>
+        <button className={'fdh-sous' + (vue === 'membres' ? ' on' : '')} onClick={() => setVue('membres')}>Inscrits</button>
+        <button className={'fdh-sous' + (vue === 'actions' ? ' on' : '')} onClick={() => setVue('actions')}>Actions</button>
         <button className={'fdh-sous' + (vue === 'paiements' ? ' on' : '')} onClick={() => setVue('paiements')}>Paiements</button>
         <button className={'fdh-sous' + (vue === 'signal' ? ' on' : '')} onClick={() => setVue('signal')}>Signalés {signalements.length > 0 && <span>{signalements.length}</span>}</button>
       </div>
@@ -1501,6 +1538,39 @@ function Admin({ onVoir }) {
             ))}
             {membresFiltres.length === 0 && <p className="fdh-msg">Aucun membre.</p>}
           </div>
+        </div>
+      )}
+
+      {vue === 'actions' && (
+        <div>
+          <FiltrePeriode val={perAct} set={setPerAct} />
+          <div className="fdh-sousongl mini">
+            {ONGLETS_ACTION.map(([k, emo, lbl]) => (
+              <button key={k} className={'fdh-sous mini' + (sousAct === k ? ' on' : '')} onClick={() => setSousAct(k)}>{emo} {lbl}</button>
+            ))}
+          </div>
+          {errAct && <div className="fdh-abo-msg err">{errAct}</div>}
+          {chargeAct && <p className="fdh-msg">Chargement…</p>}
+          {!chargeAct && actions && (() => {
+            const ong = ONGLETS_ACTION.find(o => o[0] === sousAct)
+            const val = actions[ong[3]] ?? 0
+            return (
+              <div className="fdh-act-bloc">
+                <div className="fdh-act-n">{val}</div>
+                <div className="fdh-act-l">{ong[4]}</div>
+                {sousAct === 'enligne' && (
+                  <div className="fdh-act-live">🟢 {actions.maintenant ?? 0} en ligne en ce moment</div>
+                )}
+                <div className="fdh-act-tous">
+                  {ONGLETS_ACTION.map(([k, emo, lbl, champ]) => (
+                    <div key={k} className={'fdh-act-mini' + (sousAct === k ? ' on' : '')} onClick={() => setSousAct(k)}>
+                      <span>{emo} {lbl}</span><b>{actions[champ] ?? 0}</b>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 
@@ -1685,6 +1755,21 @@ export default function Accueil({ onDeconnexion }) {
       setMesReponses(aff?.reponses || {})
     })()
   }, [])
+
+  // Battement d'activité : alimente les stats « En ligne » et « PWA installée »
+  useEffect(() => {
+    if (!moi?.id) return
+    const installee = typeof window !== 'undefined' &&
+      ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true)
+    const battre = async () => {
+      const champs = { derniere_activite: new Date().toISOString() }
+      if (installee && !moi.pwa_installe_at) champs.pwa_installe_at = new Date().toISOString()
+      try { await supabase.from('profiles').update(champs).eq('id', moi.id) } catch (_) {}
+    }
+    battre()
+    const t = setInterval(battre, 120000) // toutes les 2 minutes
+    return () => clearInterval(t)
+  }, [moi?.id]) // eslint-disable-line
 
   // Retour d'un paiement Chariow : l'activation arrive par webhook, on rafraîchit le profil quelques fois
   useEffect(() => {
@@ -1971,6 +2056,18 @@ function Style() {
       /* J'aime */
       .fdh-section-titre{font-size:1.05rem;font-weight:800;color:#4A1546;margin:.2rem 0 .8rem;display:flex;align-items:center;gap:.5rem}
       .fdh-sousongl{display:flex;gap:.4rem;margin-bottom:1rem}
+      .fdh-sousongl.mini{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:.2rem}
+      .fdh-sous.mini{flex:0 0 auto;font-size:.76rem;padding:.5rem .7rem}
+      .fdh-act-bloc{background:#fff;border:1.5px solid #E4D3D8;border-radius:16px;padding:1.4rem 1rem;text-align:center}
+      .fdh-act-n{font-size:3rem;font-weight:900;color:#4A1546;line-height:1}
+      .fdh-act-l{color:#7A6B74;font-size:.9rem;margin-top:.35rem}
+      .fdh-act-live{margin-top:.8rem;display:inline-block;background:#eafaf0;color:#1a7f45;font-weight:800;
+        font-size:.82rem;padding:.35rem .8rem;border-radius:99px}
+      .fdh-act-tous{margin-top:1.2rem;border-top:1px solid #F1E4E8;padding-top:.8rem;display:flex;flex-direction:column;gap:.15rem}
+      .fdh-act-mini{display:flex;justify-content:space-between;align-items:center;padding:.5rem .6rem;
+        border-radius:10px;font-size:.85rem;color:#5c4f57;cursor:pointer}
+      .fdh-act-mini.on{background:#F7EDF0;color:#4A1546;font-weight:800}
+      .fdh-act-mini b{color:#4A1546;font-size:1rem}
       .fdh-sous{flex:1;min-width:0;background:#fff;border:1.5px solid #E4D3D8;border-radius:12px;padding:.6rem .3rem;font-weight:800;font-size:.82rem;color:#7A6B74;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.3rem;white-space:nowrap}
       .fdh-sous.on{background:#D62A5E;border-color:#D62A5E;color:#fff}
       .fdh-sous span{background:rgba(255,255,255,.3);color:inherit;font-size:.75rem;padding:.05rem .45rem;border-radius:99px}
