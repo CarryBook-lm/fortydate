@@ -139,12 +139,12 @@ const NOM_PAYS = {
 }
 function couleurCompat(p) { return p >= 80 ? '#1c8a3e' : p >= 60 ? '#C69A4E' : '#9a8b92' }
 
-// Un profil est-il abonné Sérénité (badge visible) ?
+// Un profil est-il membre VIP (badge visible) ?
 function estAbonneP(p) {
   return p?.abo_statut === 'actif' && p?.abo_expire_at && new Date(p.abo_expire_at) > new Date()
 }
 
-// Coche rose « Sérénité » à afficher à côté du prénom
+// Badges à afficher à côté du prénom
 // ✓ bleu = identité vérifiée (confiance) ; ⭐ or = membre VIP (statut)
 function BadgeVerifie({ p, size = 18 }) {
   if (!p?.verifie) return null
@@ -1115,7 +1115,7 @@ function MonProfil({ moi, onDeconnexion, onMaj }) {
       <div className="fdh-profil-infos">
         <span className="fdh-tag">{moi.situation || '—'}</span>
         <span className="fdh-tag">Recherche : {moi.recherche_genre === 'les_deux' ? 'tout le monde' : moi.recherche_genre}</span>
-        <span className="fdh-tag">{moi.abo_statut === 'actif' ? '⭐ Sérénité' : 'Découverte (gratuit)'}</span>
+        <span className="fdh-tag">{moi.abo_statut === 'actif' ? '⭐ Membre VIP' : 'Découverte (gratuit)'}</span>
       </div>
       <button className="fdh-btn-rose" style={{ marginTop: '.4rem' }} onClick={() => setEditer(true)}>✏️ Modifier mon profil</button>
       <button className="fdh-btn-deco" onClick={onDeconnexion}>Se déconnecter</button>
@@ -1263,9 +1263,9 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
 
       {!abonne && envoyesJour !== null && (
         restants > 0
-          ? <div className="fdh-msg-reste">Il te reste <b>{restants}</b> message{restants > 1 ? 's' : ''} aujourd'hui · <span onClick={() => onFaireAbo && onFaireAbo()}>Passer à Sérénité ›</span></div>
+          ? <div className="fdh-msg-reste">Il te reste <b>{restants}</b> message{restants > 1 ? 's' : ''} aujourd'hui · <span onClick={() => onFaireAbo && onFaireAbo()}>Passer VIP ›</span></div>
           : <button className="fdh-teaser" style={{ margin: '0 .5rem .4rem' }} onClick={() => onFaireAbo && onFaireAbo()}>
-              🔒 Limite du jour atteinte — passe à Sérénité pour des messages illimités ›
+              🔒 Limite du jour atteinte — passe VIP pour des messages illimités ›
             </button>
       )}
 
@@ -1330,7 +1330,7 @@ function Messages({ moi, ouvrir, setOuvrir, onLu, onFaireAbo }) {
   )
 }
 
-/* ---------------- Onglet : Visites (réservé Sérénité) ---------------- */
+/* ---------------- Onglet : Visites (réservé VIP) ---------------- */
 // Messages par jour pour un membre non abonné
 const LIMITE_MSG_JOUR = 5
 
@@ -1378,8 +1378,8 @@ function Visites({ moi, onVoir, onFaireAbo, onDiscuter }) {
       <div className="fdh-vide-etat">
         <div className="fdh-vide-emoji">🔒</div>
         <p>Qui a vu ton profil ?</p>
-        <p className="fdh-vide-sous">Réservé aux membres <b>Sérénité</b>. Découvre qui s'intéresse à toi et prends l'avantage.</p>
-        <button className="fdh-btn-rose" style={{ marginTop: '1rem' }} onClick={onFaireAbo}>Passer à Sérénité</button>
+        <p className="fdh-vide-sous">Réservé aux membres <b>VIP</b>. Découvre qui s'intéresse à toi et prends l'avantage.</p>
+        <button className="fdh-btn-rose" style={{ marginTop: '1rem' }} onClick={onFaireAbo}>Devenir membre VIP</button>
       </div>
     )
 
@@ -1422,7 +1422,7 @@ function Visites({ moi, onVoir, onFaireAbo, onDiscuter }) {
   )
 }
 
-/* ---------------- Abonnement Sérénité (modal, 3 formules) ---------------- */
+/* ---------------- Abonnement VIP (modal, 3 formules) ---------------- */
 const MSG_ATTENTE = [
   '📲 Une demande de paiement vient d\'être envoyée sur votre téléphone.',
   '🔐 Composez votre code PIN Mobile Money pour valider.',
@@ -1525,7 +1525,7 @@ function Abonnement({ moi, onFini, onClose }) {
         {etape === 'ok' ? (
           <div className="fdh-modal-fin">
             <div className="fdh-modal-emoji">🎉</div>
-            <h2>Bienvenue chez Sérénité !</h2>
+            <h2>Bienvenue chez les VIP !</h2>
             <p>Ton abonnement est activé. Tu as accès à toutes les fonctionnalités premium.</p>
             <button className="fdh-btn-rose" style={{ width: '100%' }} onClick={onClose}>Continuer</button>
           </div>
@@ -1588,7 +1588,7 @@ function Abonnement({ moi, onFini, onClose }) {
 
         ) : (
           <>
-            <div className="fdh-modal-badge">Sérénité</div>
+            <div className="fdh-modal-badge">Membre VIP</div>
             <p className="fdh-modal-sous">Débloque : qui t'a vue, qui t'a aimée, tes % d'affinité et les messages illimités.</p>
             <div className="fdh-plans">
               {plansDispo.map(p => {
@@ -2077,8 +2077,8 @@ function Avantages({ moi, onClose, onFaireAbo }) {
     <div className="fdh-modal-fond" onClick={onClose}>
       <div className="fdh-modal" onClick={e => e.stopPropagation()}>
         <button className="fdh-modal-x" onClick={onClose}>✕</button>
-        <h2 className="fdh-quest-titre">⭐ Sérénité — ce que ça change</h2>
-        <p className="fdh-manuel-intro">L'abonnement Sérénité débloque <b>tout</b> FortyDate pendant toute sa durée.</p>
+        <h2 className="fdh-quest-titre">⭐ Membre VIP — ce que ça change</h2>
+        <p className="fdh-manuel-intro">L'abonnement VIP débloque <b>tout</b> FortyDate pendant toute sa durée.</p>
 
         <div className="fdh-manuel-bloc">
           <div className="fdh-manuel-titre"><span>✅</span>Gratuit pour tous les membres</div>
@@ -2086,7 +2086,7 @@ function Avantages({ moi, onClose, onFaireAbo }) {
         </div>
 
         <div className="fdh-manuel-bloc">
-          <div className="fdh-manuel-titre"><span>⭐</span>Réservé aux membres Sérénité</div>
+          <div className="fdh-manuel-titre"><span>⭐</span>Réservé aux membres VIP</div>
           <ul className="fdh-av-liste or">{SERENITE.map(t => <li key={t}>{t}</li>)}</ul>
         </div>
 
@@ -2110,7 +2110,7 @@ function Avantages({ moi, onClose, onFaireAbo }) {
         </p>
 
         <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '.9rem' }}
-          onClick={() => { onClose(); onFaireAbo && onFaireAbo() }}>Passer à Sérénité</button>
+          onClick={() => { onClose(); onFaireAbo && onFaireAbo() }}>Devenir membre VIP</button>
       </div>
     </div>
   )
@@ -2197,7 +2197,7 @@ function Contact({ onClose }) {
   const [copie, setCopie] = useState(false)
   const cas = [
     ['💳', "Le paiement ne passe pas", "Mobile Money ou carte refusée, page bloquée, code non reçu : écris-nous en précisant le moyen utilisé et l'heure de la tentative."],
-    ['⭐', "Tu as payé mais pas d'accès", "Si ton abonnement Sérénité n'est pas activé après ton paiement, envoie-nous la référence de la transaction (ou une capture du reçu) : on l'active manuellement."],
+    ['⭐', "Tu as payé mais pas d'accès", "Si ton abonnement VIP n'est pas activé après ton paiement, envoie-nous la référence de la transaction (ou une capture du reçu) : on l'active manuellement."],
     ['👤', 'Problème de compte', "Mot de passe, photo qui ne se charge pas, profil bloqué par erreur, suppression de ton compte : on s'en occupe."],
     ['🛡️', 'Signaler un abus', "Comportement déplacé, arnaque, faux profil : signale-le depuis la fiche du membre, et écris-nous si c'est urgent."],
     ['💡', 'Suggestion', "Une idée pour améliorer FortyDate ? On lit tous les messages avec plaisir."],
@@ -2242,7 +2242,7 @@ function Manuel({ onClose }) {
     ['❤️', "J'aime", "« Ils t'ont aimée » regroupe les personnes qui ont flashé sur toi : appuie sur le ❤ de leur carte pour les aimer en retour, et c'est aussitôt un match. « Tes matchs », ce sont celles avec qui c'est réciproque : tu peux alors leur écrire."],
     ['💬', 'Messages', "Discute avec tes matchs. La pastille rouge t'indique les messages non lus, conversation par conversation."],
     ['✨', 'Affinités', "Réponds au petit questionnaire : l'appli calcule ensuite votre pourcentage de compatibilité avec les autres membres."],
-    ['⭐', 'Sérénité', "L'abonnement débloque le meilleur : voir qui t'a aimée, les visites de ton profil, le pourcentage d'affinité et les messages illimités."],
+    ['⭐', 'Membre VIP', "L'abonnement débloque le meilleur : voir qui t'a aimée, les visites de ton profil, le pourcentage d'affinité et les messages illimités."],
     ['🏅', 'Les badges', "Deux badges peuvent apparaître à côté d'un prénom. Le ✓ bleu signifie « profil vérifié » : la personne nous a envoyé un selfie privé et notre équipe a confirmé que c'est bien elle. L'étoile dorée signifie « Membre VIP », c'est-à-dire un membre abonné. Pour obtenir le ✓ bleu, envoie ton selfie de vérification — il reste privé et ne s'affiche jamais sur le site."],
     ['🛡️', 'Sécurité', "Un profil te met mal à l'aise ? Tu peux le signaler ou le bloquer depuis sa fiche. Ne partage jamais tes coordonnées bancaires ni d'argent avec un inconnu."],
   ]
@@ -2371,7 +2371,7 @@ export default function Accueil({ onDeconnexion }) {
   }, [])
 
   const titres = { proximite: 'À proximité', rencontres: 'Rencontre', jaime: "J'aime", messages: 'Messages', match: 'Affinités', visites: 'Visites' }
-  const titreOverlay = { profil: 'Mon profil', questionnaire: 'Affinités', abonnement: 'Sérénité' }
+  const titreOverlay = { profil: 'Mon profil', questionnaire: 'Affinités', abonnement: 'Membre VIP' }
   const abonne = estAbonne(moi)
   const allerOnglet = (id) => {
     setOverlay(null); setMenuOuvert(false); setOnglet(id)
@@ -2403,12 +2403,12 @@ export default function Accueil({ onDeconnexion }) {
             </div>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('profil')}>👤 Mon profil</button>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('questionnaire')}>📝 Questionnaire d'affinités</button>
-            <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Abonnement : Passez à Sérénité</button>
+            <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Devenir membre VIP</button>
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setManuelOuvert(true) }}>📖 Comment utiliser FortyDate</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setReglesOuvert(true) }}>📜 Règles du site</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setVerifOuvert(true) }}>{moi?.verifie ? '✅ Profil vérifié' : '✓ Faire vérifier mon profil'}</button>
-            <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setAvantagesOuvert(true) }}>⭐ Gratuit ou Sérénité ?</button>
+            <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setAvantagesOuvert(true) }}>⭐ Gratuit ou VIP ?</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setContactOuvert(true) }}>✉️ Nous contacter</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item" onClick={async () => {
