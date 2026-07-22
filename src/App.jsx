@@ -66,6 +66,16 @@ function BanniereInstall() {
   )
 }
 
+/* ---------- Capture de l'événement d'installation Android ----------
+   Chrome ne le déclenche qu'UNE FOIS, très tôt au chargement. On l'attrape
+   ici, au niveau du module, pour qu'il ne soit jamais manqué par un
+   composant monté plus tard. */
+let promptInstall = null
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); promptInstall = e })
+  window.addEventListener('appinstalled', () => { promptInstall = null })
+}
+
 /* ---------- Rappel d'installation (pop-up au centre de l'écran) ----------
    Réglages : change ces 3 valeurs pour ajuster la fréquence.            */
 const DELAI_1RE_FOIS = 2 * 60 * 1000        // 1re apparition après 2 minutes d'utilisation
@@ -89,7 +99,7 @@ function PopupInstall() {
 
     setIos(/iphone|ipad|ipod/i.test(window.navigator.userAgent))
 
-    const onPrompt = (e) => { e.preventDefault(); setPrompt(e) }
+    const onPrompt = (e) => { e.preventDefault(); promptInstall = e; setPrompt(e) }
     const onInstalled = () => {
       try { localStorage.setItem('fd_install', JSON.stringify({ installe: true })) } catch (_) {}
       setVisible(false)
@@ -99,7 +109,7 @@ function PopupInstall() {
 
     // Délai avant affichage : 2 min la 1re fois, sinon 24 h après le dernier refus
     const attente = lu.dernier ? Math.max(0, lu.dernier + PAUSE_APRES_REFUS - Date.now()) : DELAI_1RE_FOIS
-    const t = setTimeout(() => setVisible(true), attente)
+    const t = setTimeout(() => { setPrompt(promptInstall); setVisible(true) }, attente)
 
     return () => {
       clearTimeout(t)
@@ -123,6 +133,8 @@ function PopupInstall() {
     if (!prompt) return
     prompt.prompt()
     const res = await prompt.userChoice
+    promptInstall = null   // un événement ne peut servir qu'une fois
+    setPrompt(null)
     if (res.outcome === 'accepted') {
       try { localStorage.setItem('fd_install', JSON.stringify({ installe: true })) } catch (_) {}
       setVisible(false)
