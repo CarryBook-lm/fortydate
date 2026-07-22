@@ -2544,7 +2544,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 22/07 · #AG</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 22/07 · #AH</div>
           </div>
         </div>
       )}
@@ -2622,7 +2622,7 @@ function Style() {
       .fdh-logo{font-weight:800;font-size:1.2rem}
       .fdh-logo .f{color:#4A1546}.fdh-logo .d{color:#D62A5E}
       .fdh-logo-img{height:48px;width:auto;max-width:58%;display:block;object-fit:contain;flex:0 1 auto;min-width:0}
-      .fdh-annonce-btn{background:none;border:0;font-size:1.2rem;cursor:pointer;line-height:1;padding:0;flex:0 0 auto}
+      .fdh-annonce-btn{background:none;border:0;font-size:1.2rem;cursor:pointer;line-height:1;padding:0;flex:0 0 auto;margin-left:.7rem}
       .fdh-annonce{background:#fff;border:1.5px solid #EEE0E4;border-radius:14px;padding:.9rem;margin-bottom:.7rem}
       .fdh-annonce.mienne{border-color:#C69A4E;background:#FFFCF6}
       .fdh-annonce-tete{display:flex;align-items:flex-start;gap:.6rem}
