@@ -1690,9 +1690,11 @@ function Regles({ onClose }) {
 function Manuel({ onClose }) {
   const sections = [
     ['👤', 'Complète ton profil', "Ajoute une belle photo et quelques mots sur toi via le menu ☰ → Mon profil. Un profil complet et sincère inspire confiance et attire les bonnes personnes."],
+    ['📲', "Installe l'application", "Mets FortyDate sur ton écran d'accueil : elle s'ouvre alors comme une vraie application, plus vite et sans passer par le navigateur. Si un bouton « Installer » apparaît en haut de l'écran, appuie simplement dessus. S'il ne s'affiche pas : sur Android, ouvre le menu ⋮ de Chrome puis « Ajouter à l'écran d'accueil ». Sur iPhone, appuie sur le bouton Partager ⬆️ de Safari puis « Sur l'écran d'accueil »."],
+    ['🔔', 'Active les notifications', "Menu ☰ → « Activer les notifications », puis accepte la demande de ton téléphone. Tu seras prévenu(e) d'un nouveau message ou d'un nouveau j'aime, même quand l'appli est fermée. Sur iPhone, installe d'abord l'application sur ton écran d'accueil : c'est indispensable pour recevoir les notifications."],
     ['📍', 'À proximité', "Découvre les membres proches de chez toi. Appuie sur une carte pour ouvrir un profil et en savoir plus."],
-    ['💑', 'Rencontres', "Fais défiler les profils un par un : 💚 pour aimer, ✖️ pour passer. Prends ton temps, c'est simple."],
-    ['❤️', "J'aime", "Ici tu retrouves « Ils t'ont aimée » (les personnes qui ont flashé sur toi) et « Tes matchs ». Un match, c'est quand vous vous êtes aimés tous les deux."],
+    ['💑', 'Rencontres', "Les profils se présentent un par un. Balaie vers la droite ou la gauche pour simplement en voir un autre : rien n'est enregistré, la personne reviendra plus tard. Quand tu veux décider, appuie sur ❤ pour aimer ou ✕ pour passer."],
+    ['❤️', "J'aime", "« Ils t'ont aimée » regroupe les personnes qui ont flashé sur toi : appuie sur le ❤ de leur carte pour les aimer en retour, et c'est aussitôt un match. « Tes matchs », ce sont celles avec qui c'est réciproque : tu peux alors leur écrire."],
     ['💬', 'Messages', "Discute avec tes matchs. La pastille rouge t'indique les messages non lus, conversation par conversation."],
     ['✨', 'Affinités', "Réponds au petit questionnaire : l'appli calcule ensuite votre pourcentage de compatibilité avec les autres membres."],
     ['⭐', 'Sérénité', "L'abonnement débloque le meilleur : voir qui t'a aimée, les visites de ton profil, le pourcentage d'affinité et les messages illimités."],
