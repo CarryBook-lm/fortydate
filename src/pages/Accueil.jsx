@@ -1804,6 +1804,7 @@ const ONGLETS_ACTION = [
   ['affin', '✨', 'Affinité', 'affinites', 'Membres qui ont répondu au questionnaire'],
   ['match', '💞', 'Match', 'matchs', 'Matchs créés'],
   ['enligne', '🟢', 'En ligne', 'en_ligne', 'Membres actifs sur la période'],
+  ['annonce', '📢', 'Annonces', 'annonces', 'Annonces publiées'],
   ['abo', '⭐', 'Abonnés', 'abonnes', 'Membres avec un abonnement en cours'],
 ]
 
@@ -2544,7 +2545,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 22/07 · #AH</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 22/07 · #AI</div>
           </div>
         </div>
       )}
