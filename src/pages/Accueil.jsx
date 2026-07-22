@@ -355,19 +355,21 @@ function FicheProfil({ profil, moi, onFermer }) {
               <div className="fdh-chips">{profil.langues.map(v => <span key={v}>{v}</span>)}</div></div>)}
 
           {!estMoi && (
-            <button className={'fdh-fiche-aime' + (aimeEtat === 'fait' ? ' fait' : '')}
-              disabled={aimeEtat !== ''} onClick={aimer}>
-              {aimeEtat === 'envoi' ? '…'
-                : aimeEtat === 'fait' ? (matchFait ? "🎉 C'est un match !" : "❤ J'aime envoyé")
-                : `❤ J'aime ${profil.prenom}`}
-            </button>
-          )}
-
-          {!estMoi && (
             <button className="fdh-signaler" onClick={() => { setSignalerOuvert(true); setSigMsg('') }}>🚩 Signaler ce profil</button>
           )}
         </div>
       </div>
+
+      {!estMoi && (
+        <div className="fdh-fiche-pied">
+          <button className={'fdh-fiche-aime' + (aimeEtat === 'fait' ? ' fait' : '')}
+            disabled={aimeEtat !== ''} onClick={aimer}>
+            {aimeEtat === 'envoi' ? '…'
+              : aimeEtat === 'fait' ? (matchFait ? "🎉 C'est un match !" : "❤ J'aime envoyé")
+              : `❤ J'aime ${profil.prenom}`}
+          </button>
+        </div>
+      )}
 
       {signalerOuvert && (
         <div className="fdh-modal-fond" onClick={() => setSignalerOuvert(false)}>
@@ -1872,7 +1874,7 @@ function Admin({ onVoir }) {
         <button className={'fdh-sous' + (vue === 'membres' ? ' on' : '')} onClick={() => setVue('membres')}>Users</button>
         <button className={'fdh-sous' + (vue === 'pays' ? ' on' : '')} onClick={() => setVue('pays')}>Pays</button>
         <button className={'fdh-sous' + (vue === 'verif' ? ' on' : '')} onClick={() => setVue('verif')}>Vérif</button>
-        <button className={'fdh-sous' + (vue === 'paiements' ? ' on' : '')} onClick={() => setVue('paiements')}>Paiement</button>
+        <button className={'fdh-sous' + (vue === 'paiements' ? ' on' : '')} onClick={() => setVue('paiements')}>Payé</button>
         <button className={'fdh-sous' + (vue === 'signal' ? ' on' : '')} onClick={() => setVue('signal')}>
           Signalé{nouveauxSignal > 0 && <span className="fdh-sous-pastille">{nouveauxSignal}</span>}
         </button>
@@ -2383,7 +2385,7 @@ export default function Accueil({ onDeconnexion }) {
 function Style() {
   return (
     <style>{`
-      html,body{margin:0;padding:0}
+      html,body{margin:0;padding:0;overflow-x:hidden;max-width:100%}
       #root{width:100%;max-width:480px;margin:0 auto}
       .fdh-app{min-height:100vh;background:#FBF4F5;font-family:system-ui,'Segoe UI',sans-serif;
         color:#3A0F38;display:flex;flex-direction:column;width:100%;max-width:480px;margin:0 auto;position:relative}
@@ -2633,7 +2635,7 @@ function Style() {
       .fdh-zone-b{flex:1;background:#fff;border:1.5px solid #E4D3D8;border-radius:12px;padding:.6rem .4rem;
         font-weight:800;font-size:.86rem;color:#7A6B74;cursor:pointer;white-space:nowrap}
       .fdh-zone-b.on{background:#4A1546;color:#fff;border-color:#4A1546}
-      .fdh-fiche-aime{width:100%;margin-top:1rem;padding:.85rem;border:0;border-radius:12px;
+      .fdh-fiche-aime{width:100%;margin:0;padding:.85rem;border:0;border-radius:12px;
         background:#D62A5E;color:#fff;font-weight:800;font-size:1rem;cursor:pointer}
       .fdh-fiche-aime:hover{background:#B21F4E}
       .fdh-fiche-aime.fait{background:#fff;color:#D62A5E;border:1.5px solid #D62A5E}
@@ -2660,7 +2662,7 @@ function Style() {
       .fdh-act-mini.on{background:#F7EDF0;color:#4A1546;font-weight:800}
       .fdh-act-mini b{color:#4A1546;font-size:1rem}
       .fdh-sous{flex:1;min-width:0;position:relative;background:#fff;border:1.5px solid #E4D3D8;border-radius:12px;padding:.6rem .3rem;font-weight:800;font-size:.82rem;color:#7A6B74;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.3rem;white-space:nowrap}
-      .fdh-sous-pastille{position:absolute;top:-7px;right:-3px;min-width:19px;height:19px;padding:0 5px;
+      .fdh-sous-pastille{position:absolute;top:-7px;right:0;min-width:19px;height:19px;padding:0 5px;
         border-radius:99px;background:#D62A5E;color:#fff;font-size:.68rem;font-weight:800;
         display:grid;place-items:center;line-height:1;box-shadow:0 0 0 2px #FBF4F5}
       .fdh-sous.on{background:#D62A5E;border-color:#D62A5E;color:#fff}
@@ -2772,10 +2774,14 @@ function Style() {
       .fdh-envoi:disabled{opacity:.5}
 
       /* Fiche profil */
-      .fdh-fiche{position:fixed;inset:0;max-width:520px;margin:0 auto;background:#FBF4F5;z-index:70;display:flex;flex-direction:column}
-      .fdh-fiche-head{display:flex;align-items:center;gap:.5rem;padding:.7rem 1rem;padding-top:calc(.7rem + env(safe-area-inset-top));background:#fff;border-bottom:1px solid #EEE0E4}
+      .fdh-fiche{position:fixed;top:0;bottom:0;left:0;right:0;height:100dvh;max-width:520px;margin:0 auto;
+        background:#FBF4F5;z-index:70;display:flex;flex-direction:column;overflow:hidden}
+      .fdh-fiche-pied{flex:0 0 auto;background:#FBF4F5;border-top:1px solid #EEE0E4;
+        padding:.6rem 1rem;padding-bottom:calc(.6rem + env(safe-area-inset-bottom))}
+      .fdh-fiche-head{flex:0 0 auto;display:flex;align-items:center;gap:.5rem;padding:.7rem 1rem;padding-top:calc(.7rem + env(safe-area-inset-top));background:#fff;border-bottom:1px solid #EEE0E4}
       .fdh-badge{flex:0 0 auto;aspect-ratio:1/1}
-      .fdh-fiche-scroll{flex:1;overflow-y:auto}
+      .fdh-fiche-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+      .fdh-fiche-pied .fdh-fiche-aime{margin-top:0}
       .fdh-fiche-photo{width:100%;background:#EDE0E4}
       .fdh-fiche-photo img{width:100%;max-height:420px;object-fit:cover;display:block}
       .fdh-fiche-photo .fdh-vide{width:100%}
