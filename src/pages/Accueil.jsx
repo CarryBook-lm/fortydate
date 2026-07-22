@@ -1530,6 +1530,11 @@ function Admin({ onVoir }) {
   const [membres, setMembres] = useState(null)
   const [paiements, setPaiements] = useState(null)
   const [signalements, setSignalements] = useState([])
+  const [vuSignal, setVuSignal] = useState(() => {
+    try { return localStorage.getItem('fd_signal_vu') || '' } catch (_) { return '' }
+  })
+  // Pastille = uniquement les signalements arrivés depuis la dernière consultation
+  const nouveauxSignal = signalements.filter(s => !vuSignal || (s.cree_at && s.cree_at > vuSignal)).length
   const [recherche, setRecherche] = useState('')
   const [msg, setMsg] = useState('')
   // Une seule période, partagée par toutes les vues
@@ -1603,6 +1608,16 @@ function Admin({ onVoir }) {
     })()
     return () => { annule = true }
   }, [vue, periode]) // eslint-disable-line
+
+  // Ouvrir l'onglet Signalé marque les signalements comme vus (la pastille s'éteint)
+  useEffect(() => {
+    if (vue !== 'signal' || signalements.length === 0) return
+    const plusRecent = signalements.reduce((max, s) => (s.cree_at && s.cree_at > max ? s.cree_at : max), '')
+    if (plusRecent && plusRecent !== vuSignal) {
+      setVuSignal(plusRecent)
+      try { localStorage.setItem('fd_signal_vu', plusRecent) } catch (_) {}
+    }
+  }, [vue, signalements]) // eslint-disable-line
 
   // Statistiques sur la période choisie
   const stats = (() => {
@@ -1684,7 +1699,9 @@ function Admin({ onVoir }) {
         <button className={'fdh-sous' + (vue === 'membres' ? ' on' : '')} onClick={() => setVue('membres')}>Users</button>
         <button className={'fdh-sous' + (vue === 'pays' ? ' on' : '')} onClick={() => setVue('pays')}>Pays</button>
         <button className={'fdh-sous' + (vue === 'paiements' ? ' on' : '')} onClick={() => setVue('paiements')}>Paiement</button>
-        <button className={'fdh-sous' + (vue === 'signal' ? ' on' : '')} onClick={() => setVue('signal')}>Signalé {signalements.length > 0 && <span>{signalements.length}</span>}</button>
+        <button className={'fdh-sous' + (vue === 'signal' ? ' on' : '')} onClick={() => setVue('signal')}>
+          Signalé{nouveauxSignal > 0 && <span className="fdh-sous-pastille">{nouveauxSignal}</span>}
+        </button>
       </div>
       {msg && <div className="fdh-abo-msg err">{msg}</div>}
 
@@ -2351,7 +2368,7 @@ function Style() {
 
       /* J'aime */
       .fdh-section-titre{font-size:1.05rem;font-weight:800;color:#4A1546;margin:.2rem 0 .8rem;display:flex;align-items:center;gap:.5rem}
-      .fdh-sousongl{display:flex;gap:.4rem;margin-bottom:1rem}
+      .fdh-sousongl{display:flex;gap:.4rem;margin:.4rem 0 1rem;padding-right:3px}
       .fdh-sousongl.mini{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:.2rem}
       .fdh-sous.mini{flex:0 0 auto;font-size:.76rem;padding:.5rem .7rem}
       .fdh-act-bloc{background:#fff;border:1.5px solid #E4D3D8;border-radius:16px;padding:1.4rem 1rem;text-align:center}
@@ -2413,7 +2430,10 @@ function Style() {
         border-radius:10px;font-size:.85rem;color:#5c4f57;cursor:pointer}
       .fdh-act-mini.on{background:#F7EDF0;color:#4A1546;font-weight:800}
       .fdh-act-mini b{color:#4A1546;font-size:1rem}
-      .fdh-sous{flex:1;min-width:0;background:#fff;border:1.5px solid #E4D3D8;border-radius:12px;padding:.6rem .3rem;font-weight:800;font-size:.82rem;color:#7A6B74;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.3rem;white-space:nowrap}
+      .fdh-sous{flex:1;min-width:0;position:relative;background:#fff;border:1.5px solid #E4D3D8;border-radius:12px;padding:.6rem .3rem;font-weight:800;font-size:.82rem;color:#7A6B74;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:.3rem;white-space:nowrap}
+      .fdh-sous-pastille{position:absolute;top:-7px;right:-3px;min-width:19px;height:19px;padding:0 5px;
+        border-radius:99px;background:#D62A5E;color:#fff;font-size:.68rem;font-weight:800;
+        display:grid;place-items:center;line-height:1;box-shadow:0 0 0 2px #FBF4F5}
       .fdh-sous.on{background:#D62A5E;border-color:#D62A5E;color:#fff}
       .fdh-sous span{background:rgba(255,255,255,.3);color:inherit;font-size:.75rem;padding:.05rem .45rem;border-radius:99px}
       .fdh-sous:not(.on) span{background:#D62A5E;color:#fff}
