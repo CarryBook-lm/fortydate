@@ -366,7 +366,15 @@ function Rencontres({ moi }) {
   const [drag, setDrag] = useState(0)
   const depart = useRef(null)
 
-  // --- Balayage (doigt sur mobile, souris sur ordi) ---
+  // --- Balayage : feuillette seulement. Le profil revient plus tard tant qu'on n'a pas
+  //     appuye sur ❤ ou ✕. La liste tourne en boucle.
+  function naviguer(sens) { // 1 = suivant, -1 = precedent
+    if (profils.length < 2) return
+    const cible = (i + sens + profils.length) % profils.length
+    setAnim(sens > 0 ? 'sort-d' : 'sort-g')
+    setTimeout(() => { setI(cible); setAnim('') }, 200)
+  }
+
   function debutGeste(x, y) { if (!anim) depart.current = { x, y } }
   function bougeGeste(x, y) {
     if (!depart.current) return
@@ -380,8 +388,8 @@ function Rencontres({ moi }) {
     const dx = drag
     depart.current = null
     setDrag(0)
-    if (dx > 90) agir(true)        // balayage vers la DROITE  -> j'aime
-    else if (dx < -90) agir(false) // balayage vers la GAUCHE -> passer
+    if (dx > 90) naviguer(1)        // balayage vers la DROITE  -> profil suivant
+    else if (dx < -90) naviguer(-1) // balayage vers la GAUCHE -> profil precedent
   }
 
   useEffect(() => {
@@ -406,7 +414,13 @@ function Rencontres({ moi }) {
       await supabase.from('likes').insert({ auteur_id: moi.id, cible_id: cible.id, aime })
       if (aime) { const { data } = await supabase.rpc('est_un_match', { p_cible: cible.id }); if (data === true) setMatch(cible) }
     } catch (e) {}
-    setTimeout(() => { setI(n => n + 1); setAnim('') }, 260)
+    setTimeout(() => {
+      // ❤ ou ✕ = decision : le profil sort definitivement du paquet
+      const reste = profils.filter(x => x.id !== cible.id)
+      setProfils(reste)
+      setI(n => (reste.length === 0 || n >= reste.length ? 0 : n))
+      setAnim('')
+    }, 260)
   }
 
   if (err) return <div className="fdh-msg">{err}</div>
@@ -431,8 +445,8 @@ function Rencontres({ moi }) {
         onMouseLeave={finGeste}
       >
         <div className="fdh-swipe-photo">
-          {drag > 40 && <span className="fdh-tag-geste like">❤ J'AIME</span>}
-          {drag < -40 && <span className="fdh-tag-geste pass">✕ PASSER</span>}
+          {drag > 40 && <span className="fdh-tag-geste suiv">SUIVANT →</span>}
+          {drag < -40 && <span className="fdh-tag-geste prec">← PRÉCÉDENT</span>}
           <Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" />
           <div className="fdh-swipe-info">
             <h2>{p.prenom}{age ? `, ${age}` : ''}<Badge p={p} size={20} /></h2>
@@ -446,7 +460,7 @@ function Rencontres({ moi }) {
         <button className="fdh-rond pass" onClick={() => agir(false)}>✕</button>
         <button className="fdh-rond like" onClick={() => agir(true)}>❤</button>
       </div>
-      <p className="fdh-astuce-geste">← Balaie pour passer · Balaie pour aimer →</p>
+      <p className="fdh-astuce-geste">Balaie pour voir plus tard · ❤ ou ✕ pour décider · {i + 1} / {profils.length}</p>
       {match && (
         <div className="fdh-match"><div className="fdh-match-box">
           <div className="fdh-match-emoji">🎉</div><h2>C'est un match !</h2>
@@ -1895,11 +1909,13 @@ function Style() {
       .fdh-swipe:active{cursor:grabbing}
       .fdh-tag-geste{position:absolute;top:1rem;z-index:3;font-weight:900;font-size:1rem;letter-spacing:.05em;
         padding:.4rem .9rem;border-radius:10px;border:3px solid;background:rgba(255,255,255,.92)}
-      .fdh-tag-geste.like{left:1rem;color:#D62A5E;border-color:#D62A5E;transform:rotate(-12deg)}
-      .fdh-tag-geste.pass{right:1rem;color:#7A6B74;border-color:#7A6B74;transform:rotate(12deg)}
+      .fdh-tag-geste.suiv{left:1rem;color:#4A1546;border-color:#4A1546}
+      .fdh-tag-geste.prec{right:1rem;color:#4A1546;border-color:#4A1546}
       .fdh-astuce-geste{text-align:center;font-size:.78rem;color:#9b8b93;margin:.5rem 0 0}
       .fdh-swipe.like{transform:translateX(120%) rotate(12deg);opacity:0}
       .fdh-swipe.pass{transform:translateX(-120%) rotate(-12deg);opacity:0}
+      .fdh-swipe.sort-d{transform:translateX(110%);opacity:0}
+      .fdh-swipe.sort-g{transform:translateX(-110%);opacity:0}
       .fdh-swipe-photo{position:relative;border-radius:20px;overflow:hidden;box-shadow:0 20px 50px -20px rgba(58,15,56,.55);aspect-ratio:1 / 1.414;background:#EDE0E4}
       .fdh-swipe-photo .fdh-photo{width:100%;height:100%;object-fit:cover}
       .fdh-swipe-photo .fdh-vide{width:100%;height:100%;font-size:5rem}
