@@ -1497,10 +1497,10 @@ function Admin({ onVoir }) {
       <h2 className="fdh-admin-titre">🛡️ Espace Admin</h2>
       <div className="fdh-sousongl">
         <button className={'fdh-sous' + (vue === 'stats' ? ' on' : '')} onClick={() => setVue('stats')}>Stats</button>
-        <button className={'fdh-sous' + (vue === 'membres' ? ' on' : '')} onClick={() => setVue('membres')}>Inscrits</button>
+        <button className={'fdh-sous' + (vue === 'membres' ? ' on' : '')} onClick={() => setVue('membres')}>Users</button>
         <button className={'fdh-sous' + (vue === 'actions' ? ' on' : '')} onClick={() => setVue('actions')}>Actions</button>
-        <button className={'fdh-sous' + (vue === 'paiements' ? ' on' : '')} onClick={() => setVue('paiements')}>Paiements</button>
-        <button className={'fdh-sous' + (vue === 'signal' ? ' on' : '')} onClick={() => setVue('signal')}>Signalés {signalements.length > 0 && <span>{signalements.length}</span>}</button>
+        <button className={'fdh-sous' + (vue === 'paiements' ? ' on' : '')} onClick={() => setVue('paiements')}>Paiement</button>
+        <button className={'fdh-sous' + (vue === 'signal' ? ' on' : '')} onClick={() => setVue('signal')}>Signalé {signalements.length > 0 && <span>{signalements.length}</span>}</button>
       </div>
       {msg && <div className="fdh-abo-msg err">{msg}</div>}
 
