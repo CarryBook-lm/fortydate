@@ -1811,6 +1811,59 @@ function Regles({ onClose }) {
   )
 }
 
+function Avantages({ onClose, onFaireAbo }) {
+  const GRATUIT = [
+    "Voir tous les membres à proximité, dans ton pays ou partout",
+    "Ouvrir les profils en entier : photos, bio, centres d'intérêt",
+    "Feuilleter les profils dans Rencontres, sans limite",
+    "Aimer ❤ ou passer ✕ autant que tu veux",
+    "Voir tes matchs et discuter avec eux",
+    `Envoyer ${LIMITE_MSG_JOUR} messages par jour`,
+  ]
+  const SERENITE = [
+    "👀 Voir qui a consulté ton profil",
+    "🔓 Voir qui t'a aimée (photos et prénoms dévoilés)",
+    "✨ Voir ton pourcentage d'affinité avec chaque membre",
+    "💬 Envoyer des messages illimités",
+  ]
+  return (
+    <div className="fdh-modal-fond" onClick={onClose}>
+      <div className="fdh-modal" onClick={e => e.stopPropagation()}>
+        <button className="fdh-modal-x" onClick={onClose}>✕</button>
+        <h2 className="fdh-quest-titre">⭐ Sérénité — ce que ça change</h2>
+        <p className="fdh-manuel-intro">L'abonnement Sérénité débloque <b>tout</b> FortyDate pendant toute sa durée.</p>
+
+        <div className="fdh-manuel-bloc">
+          <div className="fdh-manuel-titre"><span>✅</span>Gratuit pour tous les membres</div>
+          <ul className="fdh-av-liste">{GRATUIT.map(t => <li key={t}>{t}</li>)}</ul>
+        </div>
+
+        <div className="fdh-manuel-bloc">
+          <div className="fdh-manuel-titre"><span>⭐</span>Réservé aux membres Sérénité</div>
+          <ul className="fdh-av-liste or">{SERENITE.map(t => <li key={t}>{t}</li>)}</ul>
+        </div>
+
+        <div className="fdh-manuel-titre" style={{ marginTop: '1rem' }}><span>💳</span>Les formules</div>
+        <div className="fdh-av-plans">
+          {PLANS.map(p => (
+            <div key={p.id} className={'fdh-av-plan' + (p.id === 'bienvenue' ? ' top' : '')}>
+              <div className="fdh-av-nom">{p.nom}{p.id === 'bienvenue' && <span className="fdh-av-tag">Le meilleur prix</span>}</div>
+              <div className="fdh-av-prix">{p.prix.toLocaleString('fr-FR')} F</div>
+              <div className="fdh-av-duree">{p.jours} jours d'accès complet</div>
+            </div>
+          ))}
+        </div>
+        <p className="fdh-manuel-txt" style={{ marginTop: '.6rem' }}>
+          Paiement par Mobile Money ou carte bancaire. L'accès est activé aussitôt et dure jusqu'à la fin de la période choisie, sans reconduction automatique.
+        </p>
+
+        <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '.9rem' }}
+          onClick={() => { onClose(); onFaireAbo && onFaireAbo() }}>Passer à Sérénité</button>
+      </div>
+    </div>
+  )
+}
+
 function Contact({ onClose }) {
   const EMAIL = 'fortydate.com@gmail.com'
   const [copie, setCopie] = useState(false)
@@ -1897,6 +1950,7 @@ export default function Accueil({ onDeconnexion }) {
   const [manuelOuvert, setManuelOuvert] = useState(false)
   const [reglesOuvert, setReglesOuvert] = useState(false)
   const [contactOuvert, setContactOuvert] = useState(false)
+  const [avantagesOuvert, setAvantagesOuvert] = useState(false)
   const [fiche, setFiche] = useState(null)  // profil consulté
   const [nbMsgNonLus, setNbMsgNonLus] = useState(0)
   const [nbNouvJaime, setNbNouvJaime] = useState(0)
@@ -2023,6 +2077,7 @@ export default function Accueil({ onDeconnexion }) {
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setManuelOuvert(true) }}>📖 Comment utiliser FortyDate</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setReglesOuvert(true) }}>📜 Règles du site</button>
+            <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setAvantagesOuvert(true) }}>⭐ Gratuit ou Sérénité ?</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setContactOuvert(true) }}>✉️ Nous contacter</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item" onClick={async () => {
@@ -2075,6 +2130,7 @@ export default function Accueil({ onDeconnexion }) {
       {manuelOuvert && <Manuel onClose={() => setManuelOuvert(false)} />}
       {reglesOuvert && <Regles onClose={() => setReglesOuvert(false)} />}
       {contactOuvert && <Contact onClose={() => setContactOuvert(false)} />}
+      {avantagesOuvert && <Avantages onClose={() => setAvantagesOuvert(false)} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
     </div>
   )
 }
@@ -2275,6 +2331,16 @@ function Style() {
       .fdh-act-l{color:#7A6B74;font-size:.9rem;margin-top:.35rem}
       .fdh-act-live{margin-top:.8rem;display:inline-block;background:#eafaf0;color:#1a7f45;font-weight:800;
         font-size:.82rem;padding:.35rem .8rem;border-radius:99px}
+      .fdh-av-liste{margin:.4rem 0 0;padding-left:1.1rem;color:#5c4f57;font-size:.9rem;line-height:1.55}
+      .fdh-av-liste li{margin-bottom:.2rem}
+      .fdh-av-liste.or li{color:#4A1546;font-weight:600}
+      .fdh-av-plans{display:flex;gap:.5rem;margin-top:.5rem}
+      .fdh-av-plan{flex:1;background:#fff;border:1.5px solid #E4D3D8;border-radius:12px;padding:.7rem .4rem;text-align:center}
+      .fdh-av-plan.top{border-color:#D62A5E;background:#FFF5F8}
+      .fdh-av-nom{font-size:.78rem;font-weight:800;color:#4A1546}
+      .fdh-av-tag{display:block;font-size:.62rem;color:#D62A5E;font-weight:800;margin-top:.1rem}
+      .fdh-av-prix{font-size:1.15rem;font-weight:900;color:#D62A5E;margin:.25rem 0 .1rem}
+      .fdh-av-duree{font-size:.68rem;color:#7A6B74;line-height:1.25}
       .fdh-contact-mail{background:#F7EDF0;border:1.5px solid #E4D3D8;border-radius:14px;padding:.9rem;text-align:center;margin-bottom:.4rem}
       .fdh-contact-lbl{font-size:.75rem;color:#7A6B74;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
       .fdh-contact-adr{display:block;margin-top:.3rem;font-size:1rem;font-weight:800;color:#4A1546;word-break:break-all;text-decoration:none}
