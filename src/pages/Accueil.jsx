@@ -180,6 +180,42 @@ function sepIndicatif(tel) {
   return { indicatif: '+237', local: t.replace(/\D/g, '') }
 }
 
+// ---- Statut de présence, calculé depuis profiles.derniere_activite ----
+function presence(d) {
+  if (!d) return null
+  const min = Math.floor((Date.now() - new Date(d).getTime()) / 60000)
+  if (min < 0) return { enLigne: true, texte: 'En ligne' }
+  if (min < 5) return { enLigne: true, texte: 'En ligne' }
+  if (min < 60) return { enLigne: false, texte: `Vu il y a ${min} min` }
+  const h = Math.floor(min / 60)
+  if (h < 24) return { enLigne: false, texte: `Vu il y a ${h} h` }
+  const j = Math.floor(h / 24)
+  if (j === 1) return { enLigne: false, texte: 'Vu hier' }
+  if (j < 30) return { enLigne: false, texte: `Vu il y a ${j} j` }
+  return null
+}
+
+function Presence({ p, avecTexte = false }) {
+  const s = presence(p?.derniere_activite)
+  if (!s) return null
+  if (!avecTexte) return <span className={'fdh-point' + (s.enLigne ? ' on' : '')} title={s.texte} />
+  return (
+    <span className={'fdh-presence' + (s.enLigne ? ' on' : '')}>
+      <span className={'fdh-point' + (s.enLigne ? ' on' : '')} />{s.texte}
+    </span>
+  )
+}
+
+// Complete une liste de profils (issue d'une fonction SQL) avec leur presence
+async function ajouterPresence(liste) {
+  const ids = (liste || []).map(x => x.id).filter(Boolean)
+  if (ids.length === 0) return liste || []
+  const { data } = await supabase.from('profiles').select('id, derniere_activite').in('id', ids)
+  const map = {}
+  for (const r of (data || [])) map[r.id] = r.derniere_activite
+  return (liste || []).map(x => ({ ...x, derniere_activite: map[x.id] || null }))
+}
+
 function Avatar({ url, prenom, taille = '100%' }) {
   if (url) return <img className="fdh-photo" src={url} alt={prenom} style={{ height: taille }} />
   const lettre = (prenom || '?').charAt(0).toUpperCase()
@@ -270,6 +306,7 @@ function FicheProfil({ profil, moi, onFermer }) {
         <div className="fdh-fiche-corps">
           <h2 className="fdh-fiche-nom">{profil.prenom}{age ? `, ${age}` : ''}<Badge p={profil} size={22} /></h2>
           <p className="fdh-fiche-lieu">📍 {profil.ville ? profil.ville + ' · ' : ''}{NOM_PAYS[profil.pays_residence] || profil.pays_residence}</p>
+          <p className="fdh-fiche-presence"><Presence p={profil} avecTexte /></p>
           {profil.bio && <p className="fdh-fiche-bio">« {profil.bio} »</p>}
 
           {chips.length > 0 && (
@@ -353,7 +390,7 @@ function Proximite({ moi, onVoir }) {
       try {
         setProfils(null)
         let q = supabase.from('profiles')
-          .select('id, prenom, date_naissance, photo_principale, pays_residence, abo_statut, abo_expire_at')
+          .select('id, prenom, date_naissance, photo_principale, pays_residence, derniere_activite, abo_statut, abo_expire_at')
           .neq('id', moi.id)
         if (zone === 'pays' && moi.pays_residence) q = q.eq('pays_residence', moi.pays_residence)
         const { data, error } = await q.limit(100)
@@ -389,8 +426,9 @@ function Proximite({ moi, onVoir }) {
         {profils.map(p => (
           <button key={p.id} className="fdh-carte" onClick={() => onVoir(p.id)}>
             <div className="fdh-carte-photo"><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></div>
-            <div className="fdh-nom"><span className="fdh-point" />
+            <div className="fdh-nom"><Presence p={p} />
               <span className="fdh-nom-txt">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} /></span></div>
+            <div className="fdh-vu"><Presence p={p} avecTexte /></div>
           </button>
         ))}
       </div>
@@ -441,7 +479,7 @@ function Rencontres({ moi }) {
       try {
         const { data: vus } = await supabase.from('likes').select('cible_id').eq('auteur_id', moi.id)
         const exclus = new Set((vus || []).map(x => x.cible_id)); exclus.add(moi.id)
-        const { data, error } = await requeteCandidats(moi, 'id, prenom, date_naissance, pays_residence, ville, photo_principale, bio, interets, abo_statut, abo_expire_at')
+        const { data, error } = await requeteCandidats(moi, 'id, prenom, date_naissance, pays_residence, ville, photo_principale, bio, interets, derniere_activite, abo_statut, abo_expire_at')
         if (error) throw error
         if (!annule) setProfils((data || []).filter(p => !exclus.has(p.id)))
       } catch (e) { if (!annule) setErr(e.message || 'Erreur.') }
@@ -544,7 +582,8 @@ function Jaime({ moi, onVoir, onDiscuter, onFaireAbo }) {
       try {
         const [m, r] = await Promise.all([supabase.rpc('mes_matchs'), supabase.rpc('qui_m_a_aime')])
         if (m.error) throw m.error; if (r.error) throw r.error
-        if (!annule) { setMatchs(m.data || []); setRecus(r.data || []) }
+        const [mp, rp] = await Promise.all([ajouterPresence(m.data), ajouterPresence(r.data)])
+        if (!annule) { setMatchs(mp); setRecus(rp) }
       } catch (e) { if (!annule) setErr(e.message || 'Erreur.') }
     })()
     return () => { annule = true }
@@ -561,7 +600,7 @@ function Jaime({ moi, onVoir, onDiscuter, onFaireAbo }) {
         <Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" />
         {floute && <span className="fdh-floute"><span className="fdh-floute-ic">🔒</span></span>}
       </button>
-      <div className="fdh-nom">{floute ? '••••••' : <>{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></>}</div>
+      <div className="fdh-nom">{floute ? '••••••' : <><Presence p={p} />{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></>}</div>
       <div className="fdh-2btn">
         {floute
           ? <button className="b-disc" onClick={() => onFaireAbo && onFaireAbo()}>Découvrir</button>
@@ -638,7 +677,7 @@ function MatchAffinites({ moi, mesReponses, onFaireQuestionnaire, onVoir, onDisc
     let annule = false
     ;(async () => {
       try {
-        const { data: cands, error } = await requeteCandidats(moi, 'id, prenom, date_naissance, pays_residence, ville, photo_principale, abo_statut, abo_expire_at')
+        const { data: cands, error } = await requeteCandidats(moi, 'id, prenom, date_naissance, pays_residence, ville, photo_principale, derniere_activite, abo_statut, abo_expire_at')
         if (error) throw error
         const ids = (cands || []).map(c => c.id)
         let affMap = {}
@@ -1088,7 +1127,8 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
       <div className="fdh-chat-head">
         <button className="fdh-retour" onClick={onRetour}>‹</button>
         <Avatar url={contact.photo_principale} prenom={contact.prenom} taille="38px" />
-        <span className="fdh-chat-nom">{contact.prenom}<Badge p={contact} /></span>
+        <span className="fdh-chat-nom">{contact.prenom}<Badge p={contact} />
+          <Presence p={contact} avecTexte /></span>
       </div>
 
       <div className="fdh-chat-fil">
@@ -1215,7 +1255,9 @@ function Visites({ moi, onVoir, onFaireAbo, onDiscuter }) {
     ;(async () => {
       const { data, error } = await supabase.rpc('qui_a_vu_mon_profil')
       if (annule) return
-      if (error) setErr(error.message); else setListe(data || [])
+      if (error) { setErr(error.message); return }
+      const avec = await ajouterPresence(data)
+      if (!annule) setListe(avec)
     })()
     return () => { annule = true }
   }, [moi, abonne])
@@ -1244,7 +1286,7 @@ function Visites({ moi, onVoir, onFaireAbo, onDiscuter }) {
         {liste.map(p => (
           <div key={p.id} className="fdh-carte fdh-carte-b">
             <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></button>
-            <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></div>
+            <div className="fdh-nom"><Presence p={p} />{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></div>
             <div className="fdh-2btn">
               <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
               <button className="b-coeur" disabled={aimeEnCours === p.id || !!aimes[p.id]}
@@ -2255,7 +2297,12 @@ function Style() {
       .fdh-photo{width:100%;object-fit:cover;display:block;background:#EDE0E4}
       .fdh-vide{display:grid;place-items:center;font-size:2.4rem;font-weight:800;color:#fff;background:linear-gradient(150deg,#7A2233,#D62A5E)}
       .fdh-nom{padding:.5rem .6rem;font-size:.82rem;font-weight:700;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;min-height:2.3rem}
-      .fdh-point{width:8px;height:8px;border-radius:50%;background:#3ecf6b;flex:0 0 auto}
+      .fdh-point{width:8px;height:8px;border-radius:50%;background:#c9bcc2;flex:0 0 auto}
+      .fdh-point.on{background:#3ecf6b;box-shadow:0 0 0 2px rgba(62,207,107,.25)}
+      .fdh-presence{display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;color:#9a8b92;font-weight:600}
+      .fdh-presence.on{color:#1a9e52}
+      .fdh-vu{padding:0 .5rem .35rem;font-size:.72rem;line-height:1}
+      .fdh-fiche-presence{margin:-.5rem 0 .8rem}
       .fdh-nom-txt{display:inline-flex;align-items:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
       .fdh-msg{text-align:center;color:#7A6B74;padding:2rem}
