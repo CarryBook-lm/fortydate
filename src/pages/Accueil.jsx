@@ -2332,7 +2332,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 22/07 · #AA</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 22/07 · #AB</div>
           </div>
         </div>
       )}
@@ -2774,7 +2774,7 @@ function Style() {
       .fdh-envoi:disabled{opacity:.5}
 
       /* Fiche profil */
-      .fdh-fiche{position:fixed;top:0;bottom:0;left:0;right:0;height:100dvh;max-width:520px;margin:0 auto;
+      .fdh-fiche{position:fixed;inset:0;max-width:520px;margin:0 auto;
         background:#FBF4F5;z-index:70;display:flex;flex-direction:column;overflow:hidden}
       .fdh-fiche-pied{flex:0 0 auto;background:#FBF4F5;border-top:1px solid #EEE0E4;
         padding:.6rem 1rem;padding-bottom:calc(.6rem + env(safe-area-inset-bottom))}
