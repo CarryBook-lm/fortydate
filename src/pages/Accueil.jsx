@@ -1090,10 +1090,28 @@ function Messages({ moi, ouvrir, setOuvrir, onLu }) {
 function estAbonne(moi) {
   return moi?.abo_statut === 'actif' && moi?.abo_expire_at && new Date(moi.abo_expire_at) > new Date()
 }
-function Visites({ moi, onVoir, onFaireAbo }) {
+function Visites({ moi, onVoir, onFaireAbo, onDiscuter }) {
   const [liste, setListe] = useState(null)
   const [err, setErr] = useState('')
+  const [aimeEnCours, setAimeEnCours] = useState(null)
+  const [aimes, setAimes] = useState({})
+  const [nouveauMatch, setNouveauMatch] = useState(null)
   const abonne = estAbonne(moi)
+
+  // Aimer un visiteur depuis sa carte
+  async function aimer(p) {
+    if (aimeEnCours || aimes[p.id]) return
+    setAimeEnCours(p.id)
+    try {
+      const { error } = await supabase.from('likes').insert({ auteur_id: moi.id, cible_id: p.id, aime: true })
+      if (error && !/duplicate|unique/i.test(error.message || '')) throw error
+      setAimes(a => ({ ...a, [p.id]: true }))
+      const { data } = await supabase.rpc('est_un_match', { p_cible: p.id })
+      if (data === true) setNouveauMatch(p)
+    } catch (e) {
+      setErr("Impossible d'enregistrer ton j'aime. Réessaie.")
+    } finally { setAimeEnCours(null) }
+  }
 
   useEffect(() => {
     if (!moi || !abonne) return
@@ -1133,10 +1151,24 @@ function Visites({ moi, onVoir, onFaireAbo }) {
             <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></div>
             <div className="fdh-2btn">
               <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
+              <button className="b-coeur" disabled={aimeEnCours === p.id || !!aimes[p.id]}
+                onClick={() => aimer(p)} aria-label="Aimer">
+                {aimeEnCours === p.id ? '…' : (aimes[p.id] ? '✓' : '❤')}
+              </button>
             </div>
           </div>
         ))}
       </div>
+      {nouveauMatch && (
+        <div className="fdh-match"><div className="fdh-match-box">
+          <div className="fdh-match-emoji">🎉</div><h2>C'est un match !</h2>
+          <p>Toi et {nouveauMatch.prenom} vous êtes aimés.</p>
+          <div className="fdh-2btn" style={{ marginTop: '.9rem', padding: 0 }}>
+            <button className="b-profil" onClick={() => setNouveauMatch(null)}>Plus tard</button>
+            <button className="b-disc" onClick={() => { const q = nouveauMatch; setNouveauMatch(null); onDiscuter && onDiscuter(q) }}>Discuter</button>
+          </div>
+        </div></div>
+      )}
     </div>
   )
 }
@@ -1917,7 +1949,7 @@ export default function Accueil({ onDeconnexion }) {
         {!overlay && onglet === 'jaime' && <Jaime moi={moi} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} />}
         {!overlay && onglet === 'messages' && <Messages moi={moi} ouvrir={conversationAvec} setOuvrir={setConversationAvec} onLu={rafraichirBadges} />}
         {!overlay && onglet === 'match' && <MatchAffinites moi={moi} mesReponses={mesReponses} onFaireQuestionnaire={() => ouvrirOverlay('questionnaire')} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} />}
-        {!overlay && onglet === 'visites' && <Visites moi={moi} onVoir={voirProfil} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
+        {!overlay && onglet === 'visites' && <Visites moi={moi} onVoir={voirProfil} onFaireAbo={() => ouvrirOverlay('abonnement')} onDiscuter={ouvrirDiscussion} />}
         {!overlay && onglet === 'admin' && estAdmin && <Admin onVoir={(id) => voirProfil(id, false)} />}
       </main>
 
