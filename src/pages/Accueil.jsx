@@ -1277,6 +1277,23 @@ const MSG_ATTENTE = [
   '🔎 Vérification de la transaction en cours…',
   '💜 Encore quelques instants, on y est presque…',
 ]
+// Affichage du prix dans la devise du membre.
+// Le taux euro est FIXE (parité FCFA), les autres sont approximatifs : d'où le « ≈ ».
+const TAUX_FCFA = { XAF: 1, XOF: 1, EUR: 655.957, CHF: 700, USD: 600, CAD: 440, GBP: 780 }
+const SYMBOLE_DEVISE = { XAF: 'FCFA', XOF: 'FCFA', EUR: '€', CHF: 'CHF', USD: '$', CAD: 'C$', GBP: '£' }
+
+function prixDansDevise(prixFcfa, devise) {
+  const d = devise || 'XAF'
+  const taux = TAUX_FCFA[d]
+  if (!taux || d === 'XAF' || d === 'XOF') return { principal: prixFcfa.toLocaleString('fr-FR') + ' F', secondaire: null }
+  const v = prixFcfa / taux
+  const arrondi = v < 10 ? Math.round(v * 10) / 10 : Math.round(v)
+  return {
+    principal: '≈ ' + arrondi.toLocaleString('fr-FR') + ' ' + (SYMBOLE_DEVISE[d] || d),
+    secondaire: prixFcfa.toLocaleString('fr-FR') + ' FCFA',
+  }
+}
+
 const PLANS = [
   { id: 'bienvenue', nom: 'Bienvenue', prix: 1000, jours: 30, note: '1ᵉʳ mois découverte' },
   { id: 'hebdo', nom: 'Hebdo', prix: 1500, jours: 7, note: '1 semaine' },
@@ -1417,19 +1434,23 @@ function Abonnement({ moi, onFini, onClose }) {
             <div className="fdh-modal-badge">Sérénité</div>
             <p className="fdh-modal-sous">Débloque : qui t'a vue, qui t'a aimée, tes % d'affinité et les messages illimités.</p>
             <div className="fdh-plans">
-              {plansDispo.map(p => (
+              {plansDispo.map(p => {
+                const px = prixDansDevise(p.prix, moi?.devise)
+                return (
                 <button key={p.id} type="button"
                   className={'fdh-plan' + (plan.id === p.id ? ' on' : '')}
                   onClick={() => setPlan(p)}>
                   <div className="fdh-plan-nom">{p.nom}</div>
-                  <div className="fdh-plan-prix">{p.prix.toLocaleString('fr-FR')} F</div>
+                  <div className="fdh-plan-prix">{px.principal}</div>
+                  {px.secondaire && <div className="fdh-av-eq">{px.secondaire}</div>}
                   <div className="fdh-plan-note">{p.note}</div>
                 </button>
-              ))}
+                )
+              })}
             </div>
             <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1.2rem' }}
               onClick={() => { setMsg(''); estCameroun ? setEtape('methode') : payerChariow() }}>
-              Payer {plan.prix.toLocaleString('fr-FR')} FCFA
+              Payer {prixDansDevise(plan.prix, moi?.devise).principal}
             </button>
             <p className="fdh-abo-note">Paiement sécurisé · {estCameroun ? 'Mobile Money (MTN & Orange)' : 'Carte / Mobile Money'}</p>
           </>
@@ -1811,7 +1832,9 @@ function Regles({ onClose }) {
   )
 }
 
-function Avantages({ onClose, onFaireAbo }) {
+function Avantages({ moi, onClose, onFaireAbo }) {
+  const dejaAbonne = !!moi?.abo_debut_at
+  const plansDispo = dejaAbonne ? PLANS.filter(p => p.id !== 'bienvenue') : PLANS
   const GRATUIT = [
     "Voir tous les membres à proximité, dans ton pays ou partout",
     "Ouvrir les profils en entier : photos, bio, centres d'intérêt",
@@ -1845,14 +1868,19 @@ function Avantages({ onClose, onFaireAbo }) {
 
         <div className="fdh-manuel-titre" style={{ marginTop: '1rem' }}><span>💳</span>Les formules</div>
         <div className="fdh-av-plans">
-          {PLANS.map(p => (
-            <div key={p.id} className={'fdh-av-plan' + (p.id === 'bienvenue' ? ' top' : '')}>
-              <div className="fdh-av-nom">{p.nom}{p.id === 'bienvenue' && <span className="fdh-av-tag">Le meilleur prix</span>}</div>
-              <div className="fdh-av-prix">{p.prix.toLocaleString('fr-FR')} F</div>
-              <div className="fdh-av-duree">{p.jours} jours d'accès complet</div>
-            </div>
-          ))}
+          {plansDispo.map(p => {
+            const px = prixDansDevise(p.prix, moi?.devise)
+            return (
+              <div key={p.id} className={'fdh-av-plan' + (p.id === 'bienvenue' ? ' top' : '')}>
+                <div className="fdh-av-nom">{p.nom}{p.id === 'bienvenue' && <span className="fdh-av-tag">Offre 1ᵉʳ achat</span>}</div>
+                <div className="fdh-av-prix">{px.principal}</div>
+                {px.secondaire && <div className="fdh-av-eq">{px.secondaire}</div>}
+                <div className="fdh-av-duree">{p.jours} jours d'accès complet</div>
+              </div>
+            )
+          })}
         </div>
+        {!dejaAbonne && <p className="fdh-av-note">L'offre « Bienvenue » n'est valable que pour ton premier abonnement.</p>}
         <p className="fdh-manuel-txt" style={{ marginTop: '.6rem' }}>
           Paiement par Mobile Money ou carte bancaire. L'accès est activé aussitôt et dure jusqu'à la fin de la période choisie, sans reconduction automatique.
         </p>
@@ -2130,7 +2158,7 @@ export default function Accueil({ onDeconnexion }) {
       {manuelOuvert && <Manuel onClose={() => setManuelOuvert(false)} />}
       {reglesOuvert && <Regles onClose={() => setReglesOuvert(false)} />}
       {contactOuvert && <Contact onClose={() => setContactOuvert(false)} />}
-      {avantagesOuvert && <Avantages onClose={() => setAvantagesOuvert(false)} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
+      {avantagesOuvert && <Avantages moi={moi} onClose={() => setAvantagesOuvert(false)} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
     </div>
   )
 }
@@ -2340,6 +2368,8 @@ function Style() {
       .fdh-av-nom{font-size:.78rem;font-weight:800;color:#4A1546}
       .fdh-av-tag{display:block;font-size:.62rem;color:#D62A5E;font-weight:800;margin-top:.1rem}
       .fdh-av-prix{font-size:1.15rem;font-weight:900;color:#D62A5E;margin:.25rem 0 .1rem}
+      .fdh-av-eq{font-size:.66rem;color:#9b8b93;margin-bottom:.1rem}
+      .fdh-av-note{font-size:.74rem;color:#9b8b93;font-style:italic;margin:.5rem 0 0;text-align:center}
       .fdh-av-duree{font-size:.68rem;color:#7A6B74;line-height:1.25}
       .fdh-contact-mail{background:#F7EDF0;border:1.5px solid #E4D3D8;border-radius:14px;padding:.9rem;text-align:center;margin-bottom:.4rem}
       .fdh-contact-lbl{font-size:.75rem;color:#7A6B74;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
