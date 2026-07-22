@@ -538,7 +538,7 @@ function Jaime({ moi, onVoir, onDiscuter }) {
   // Vue "tout" d'une catégorie (au clic sur un titre)
   if (plein) {
     const liste = plein === 'recus' ? recus : matchs
-    const titre = plein === 'recus' ? "Ils t'ont aimée · Aime-les en retour" : 'Tes matchs (Vous vous êtes aimés)'
+    const titre = plein === 'recus' ? "Ils t'ont aimée · Aime-les en retour" : 'Tes matchs · Vous vous êtes aimés'
     return (
       <div className="fdh-jaime">
         <button className="fdh-retour-lien" onClick={() => setPlein(null)}>‹ Retour</button>
@@ -555,7 +555,6 @@ function Jaime({ moi, onVoir, onDiscuter }) {
     <div className="fdh-rayon-bloc">
       <button className="fdh-rayon-titre" onClick={() => liste.length > 0 && setPlein(cle)}>
         {titre}{liste.length > 0 && <span className="fdh-rayon-num">{liste.length}</span>}
-        {liste.length > 2 && <span className="fdh-rayon-tout">Voir tout ›</span>}
       </button>
       {liste.length === 0
         ? <p className="fdh-rayon-vide">{emoji} {vide}</p>
@@ -566,7 +565,7 @@ function Jaime({ moi, onVoir, onDiscuter }) {
   return (
     <div className="fdh-jaime">
       {rayon('recus', "Ils t'ont aimée · Aime-les en retour", recus, '💗', "Personne ne t'a encore aimée.")}
-      {rayon('matchs', 'Tes matchs (Vous vous êtes aimés)', matchs, '💘', 'Pas encore de match.')}
+      {rayon('matchs', 'Tes matchs · Vous vous êtes aimés', matchs, '💘', 'Pas encore de match.')}
       {popupMatch}
     </div>
   )
