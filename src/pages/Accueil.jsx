@@ -2507,13 +2507,15 @@ function Style() {
       .fdh-conv-badge{min-width:20px;height:20px;padding:0 5px;background:#D62A5E;color:#fff;
         font-size:.72rem;font-weight:800;line-height:20px;text-align:center;border-radius:99px;flex:0 0 auto}
       .fdh-conv-fleche{color:#c9b9c0;font-size:1.4rem}
-      .fdh-chat{display:flex;flex-direction:column;height:calc(100vh - 56px - 72px)}
-      .fdh-chat-head{display:flex;align-items:center;gap:.6rem;padding:.2rem 0 .7rem;border-bottom:1px solid #EEE0E4}
+      .fdh-chat{position:fixed;inset:0;max-width:520px;margin:0 auto;background:#FBF4F5;z-index:40;
+        display:flex;flex-direction:column;overflow:hidden}
+      .fdh-chat-head{flex:0 0 auto;display:flex;align-items:center;gap:.6rem;background:#fff;
+        padding:.7rem 1rem;padding-top:calc(.7rem + env(safe-area-inset-top));border-bottom:1px solid #EEE0E4}
       .fdh-chat-head .fdh-photo{width:38px;height:38px;border-radius:50%;object-fit:cover}
       .fdh-chat-head .fdh-vide{width:38px;height:38px;border-radius:50%;font-size:1.1rem}
       .fdh-retour{background:none;border:0;font-size:1.8rem;color:#D62A5E;cursor:pointer;line-height:1;padding:0 .3rem 0 0}
       .fdh-chat-nom{font-weight:800;color:#3A0F38}
-      .fdh-chat-fil{flex:1;overflow-y:auto;padding:1rem .2rem;display:flex;flex-direction:column;gap:.4rem}
+      .fdh-chat-fil{flex:1;min-height:0;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.4rem;-webkit-overflow-scrolling:touch}
       .fdh-chat-vide{text-align:center;color:#9a8b92;margin-top:1.5rem}
       .fdh-bulle-wrap{position:relative;max-width:78%;display:flex;touch-action:pan-y}
       .fdh-bulle-wrap.moi{align-self:flex-end;justify-content:flex-end}
@@ -2531,7 +2533,9 @@ function Style() {
       .fdh-emojis{display:flex;flex-wrap:wrap;gap:.2rem;background:#fff;border:1px solid #EEE0E4;border-radius:12px;padding:.5rem;margin-bottom:.4rem;max-height:140px;overflow-y:auto}
       .fdh-emojis button{background:none;border:0;font-size:1.4rem;cursor:pointer;padding:.15rem;border-radius:8px}
       .fdh-emojis button:hover{background:#F3E7EA}
-      .fdh-chat-saisie{display:flex;gap:.5rem;padding:.6rem 0 .2rem;border-top:1px solid #EEE0E4;align-items:center}
+      .fdh-chat-saisie{flex:0 0 auto;display:flex;gap:.5rem;background:#FBF4F5;
+        padding:.6rem 1rem;padding-bottom:calc(.6rem + env(safe-area-inset-bottom));
+        border-top:1px solid #EEE0E4;align-items:center}
       .fdh-emo-btn{background:none;border:0;font-size:1.4rem;cursor:pointer;flex:0 0 auto}
       .fdh-chat-saisie input{flex:1;min-width:0;padding:.75rem 1rem;border:1.5px solid #E4D3D8;border-radius:99px;font-size:1rem;outline:none}
       .fdh-chat-saisie input:focus{border-color:#D62A5E}
