@@ -478,6 +478,23 @@ function Jaime({ moi, onVoir, onDiscuter }) {
   const [recus, setRecus] = useState(null)
   const [err, setErr] = useState('')
   const [plein, setPlein] = useState(null) // null | 'recus' | 'matchs'
+  const [aimeEnCours, setAimeEnCours] = useState(null)
+  const [nouveauMatch, setNouveauMatch] = useState(null)
+
+  // Aimer en retour quelqu'un qui nous a déjà aimé(e) => c'est forcément un match
+  async function aimerEnRetour(p) {
+    if (aimeEnCours) return
+    setAimeEnCours(p.id)
+    try {
+      const { error } = await supabase.from('likes').insert({ auteur_id: moi.id, cible_id: p.id, aime: true })
+      if (error) throw error
+      setRecus(l => (l || []).filter(x => x.id !== p.id))
+      setMatchs(l => ((l || []).some(x => x.id === p.id) ? l : [p, ...(l || [])]))
+      setNouveauMatch(p)
+    } catch (e) {
+      setErr("Impossible d'enregistrer ton j'aime. Réessaie.")
+    } finally { setAimeEnCours(null) }
+  }
   useEffect(() => {
     if (!moi) return
     let annule = false
@@ -494,15 +511,28 @@ function Jaime({ moi, onVoir, onDiscuter }) {
   if (err) return <div className="fdh-msg">{err}</div>
   if (matchs === null) return <div className="fdh-msg">Chargement…</div>
 
-  const carte = (p) => (
+  const carte = (p, type) => (
     <div key={p.id} className="fdh-carte fdh-carte-b">
       <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></button>
       <div className="fdh-nom">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></div>
       <div className="fdh-2btn">
         <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
-        <button className="b-disc" onClick={() => onDiscuter(p)}>Discuter</button>
+        {type === 'recus'
+          ? <button className="b-coeur" disabled={aimeEnCours === p.id} onClick={() => aimerEnRetour(p)} aria-label="Aimer en retour">{aimeEnCours === p.id ? '…' : '❤'}</button>
+          : <button className="b-disc" onClick={() => onDiscuter(p)}>Discuter</button>}
       </div>
     </div>
+  )
+
+  const popupMatch = nouveauMatch && (
+    <div className="fdh-match"><div className="fdh-match-box">
+      <div className="fdh-match-emoji">🎉</div><h2>C'est un match !</h2>
+      <p>Toi et {nouveauMatch.prenom} vous êtes aimés.</p>
+      <div className="fdh-2btn" style={{ marginTop: '.9rem', padding: 0 }}>
+        <button className="b-profil" onClick={() => setNouveauMatch(null)}>Plus tard</button>
+        <button className="b-disc" onClick={() => { const q = nouveauMatch; setNouveauMatch(null); onDiscuter(q) }}>Discuter</button>
+      </div>
+    </div></div>
   )
 
   // Vue "tout" d'une catégorie (au clic sur un titre)
@@ -515,7 +545,8 @@ function Jaime({ moi, onVoir, onDiscuter }) {
         <div className="fdh-rayon-titre" style={{ cursor: 'default' }}>{titre}{liste.length > 0 && <span className="fdh-rayon-num">{liste.length}</span>}</div>
         {liste.length === 0
           ? <p className="fdh-rayon-vide">Rien pour l'instant.</p>
-          : <div className="fdh-grid2">{liste.map(carte)}</div>}
+          : <div className="fdh-grid2">{liste.map(p => carte(p, plein))}</div>}
+        {popupMatch}
       </div>
     )
   }
@@ -528,7 +559,7 @@ function Jaime({ moi, onVoir, onDiscuter }) {
       </button>
       {liste.length === 0
         ? <p className="fdh-rayon-vide">{emoji} {vide}</p>
-        : <div className="fdh-rayon">{liste.map(carte)}</div>}
+        : <div className="fdh-rayon">{liste.map(p => carte(p, cle))}</div>}
     </div>
   )
 
@@ -536,6 +567,7 @@ function Jaime({ moi, onVoir, onDiscuter }) {
     <div className="fdh-jaime">
       {rayon('recus', "Ils t'ont aimée", recus, '💗', "Personne ne t'a encore aimée.")}
       {rayon('matchs', 'Tes matchs', matchs, '💘', 'Pas encore de match.')}
+      {popupMatch}
     </div>
   )
 }
@@ -1940,6 +1972,9 @@ function Style() {
       .fdh-2btn .b-profil{background:#fff;color:#4A1546}
       .fdh-2btn .b-profil:hover{background:#F3E7EA}
       .fdh-2btn .b-disc{background:#D62A5E;color:#fff;border-color:#D62A5E}
+      .fdh-2btn .b-coeur{flex:0 0 46px;background:#fff;color:#D62A5E;border-color:#D62A5E;font-size:1rem;line-height:1}
+      .fdh-2btn .b-coeur:hover{background:#D62A5E;color:#fff}
+      .fdh-2btn .b-coeur:disabled{opacity:.6;cursor:default}
       .fdh-2btn .b-disc:hover{background:#B21F4E}
       .fdh-carte-photo .fdh-photo{width:100%;height:100%;object-fit:cover}
       .fdh-carte-photo .fdh-vide{width:100%;height:100%;font-size:3rem}
