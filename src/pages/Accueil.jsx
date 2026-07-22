@@ -1741,11 +1741,11 @@ function Annonces({ moi, onVoir, onDiscuter }) {
       {edition && (
         <div className="fdh-panneau">
           <label className="fdh-f-l">Ton annonce</label>
-          <textarea className="fdh-f-in" rows={5} value={texte} maxLength={600}
+          <textarea className="fdh-f-in" rows={6} value={texte} maxLength={1000}
             placeholder="Ex. Veuve depuis 4 ans, je cherche un homme croyant, calme et attentionné, pour construire une vie à deux…"
             onChange={e => setTexte(e.target.value)} />
           <p className="fdh-f-nb" style={{ textAlign: 'left', margin: '.3rem 0 0' }}>
-            🔒 Pas de numéro de téléphone, d'e-mail ni de lien — {600 - texte.length} caractères restants
+            🔒 Pas de numéro de téléphone, d'e-mail ni de lien — {1000 - texte.length} caractères restants
           </p>
           {err && <div className="fdh-abo-msg err">{err}</div>}
           <div className="fdh-2btn" style={{ padding: '.8rem 0 0' }}>
@@ -2544,7 +2544,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 22/07 · #AD</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 22/07 · #AE</div>
           </div>
         </div>
       )}
@@ -2621,7 +2621,7 @@ function Style() {
       .fdh-burger{background:none;border:0;font-size:1.3rem;cursor:pointer;color:#4A1546;line-height:1;padding:0;flex:0 0 auto}
       .fdh-logo{font-weight:800;font-size:1.2rem}
       .fdh-logo .f{color:#4A1546}.fdh-logo .d{color:#D62A5E}
-      .fdh-logo-img{height:40px;width:auto;max-width:46%;display:block;object-fit:contain;flex:0 1 auto;min-width:0}
+      .fdh-logo-img{height:48px;width:auto;max-width:58%;display:block;object-fit:contain;flex:0 1 auto;min-width:0}
       .fdh-annonce-btn{background:none;border:0;font-size:1.2rem;cursor:pointer;line-height:1;padding:0;flex:0 0 auto}
       .fdh-annonce{background:#fff;border:1.5px solid #EEE0E4;border-radius:14px;padding:.9rem;margin-bottom:.7rem}
       .fdh-annonce.mienne{border-color:#C69A4E;background:#FFFCF6}
