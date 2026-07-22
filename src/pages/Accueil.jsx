@@ -1455,9 +1455,13 @@ const PLANS = [
 
 function Abonnement({ moi, onFini, onClose }) {
   const dejaAbonne = !!moi?.abo_debut_at   // a déjà souscrit au moins une fois
+  // 1er achat : on n'affiche que « Bienvenue » en actif, les deux autres sont grisés
+  // (ils font paraître l'offre de lancement plus intéressante). Après le 1er paiement,
+  // « Bienvenue » disparaît et les deux formules standard deviennent disponibles.
   const plansDispo = dejaAbonne ? PLANS.filter(p => p.id !== 'bienvenue') : PLANS
+  const planDispo = (x) => dejaAbonne ? x.id !== 'bienvenue' : x.id === 'bienvenue'
   const [tel, setTel] = useState('')
-  const [plan, setPlan] = useState(plansDispo[0])
+  const [plan, setPlan] = useState(plansDispo.find(planDispo) || plansDispo[0])
   const [etape, setEtape] = useState('plans') // plans | methode | numero | attente | ok | echec
   const [operateur, setOperateur] = useState('')
   const [msg, setMsg] = useState('')
@@ -1590,13 +1594,13 @@ function Abonnement({ moi, onFini, onClose }) {
               {plansDispo.map(p => {
                 const px = prixDansDevise(p.prix, moi?.devise)
                 return (
-                <button key={p.id} type="button"
-                  className={'fdh-plan' + (plan.id === p.id ? ' on' : '')}
-                  onClick={() => setPlan(p)}>
+                <button key={p.id} type="button" disabled={!planDispo(p)}
+                  className={'fdh-plan' + (plan.id === p.id ? ' on' : '') + (planDispo(p) ? '' : ' bloque')}
+                  onClick={() => planDispo(p) && setPlan(p)}>
                   <div className="fdh-plan-nom">{p.nom}</div>
                   <div className="fdh-plan-prix">{px.principal}</div>
                   {px.secondaire && <div className="fdh-av-eq">{px.secondaire}</div>}
-                  <div className="fdh-plan-note">{p.note}</div>
+                  <div className="fdh-plan-note">{planDispo(p) ? p.note : '🔒 après ton 1ᵉʳ abonnement'}</div>
                 </button>
                 )
               })}
@@ -2054,6 +2058,7 @@ function Regles({ onClose }) {
 function Avantages({ moi, onClose, onFaireAbo }) {
   const dejaAbonne = !!moi?.abo_debut_at
   const plansDispo = dejaAbonne ? PLANS.filter(p => p.id !== 'bienvenue') : PLANS
+  const planDispo = (x) => dejaAbonne ? x.id !== 'bienvenue' : x.id === 'bienvenue'
   const GRATUIT = [
     "Voir tous les membres à proximité, dans ton pays ou partout",
     "Ouvrir les profils en entier : photos, bio, centres d'intérêt",
@@ -2090,16 +2095,16 @@ function Avantages({ moi, onClose, onFaireAbo }) {
           {plansDispo.map(p => {
             const px = prixDansDevise(p.prix, moi?.devise)
             return (
-              <div key={p.id} className={'fdh-av-plan' + (p.id === 'bienvenue' ? ' top' : '')}>
+              <div key={p.id} className={'fdh-av-plan' + (p.id === 'bienvenue' ? ' top' : '') + (planDispo(p) ? '' : ' bloque')}>
                 <div className="fdh-av-nom">{p.nom}{p.id === 'bienvenue' && <span className="fdh-av-tag">Offre 1ᵉʳ achat</span>}</div>
                 <div className="fdh-av-prix">{px.principal}</div>
                 {px.secondaire && <div className="fdh-av-eq">{px.secondaire}</div>}
-                <div className="fdh-av-duree">{p.jours} jours d'accès complet</div>
+                <div className="fdh-av-duree">{planDispo(p) ? p.jours + " jours d'accès complet" : '🔒 après ton 1ᵉʳ abonnement'}</div>
               </div>
             )
           })}
         </div>
-        {!dejaAbonne && <p className="fdh-av-note">L'offre « Bienvenue » n'est valable que pour ton premier abonnement.</p>}
+        {!dejaAbonne && <p className="fdh-av-note">Pour ton premier abonnement, c'est l'offre « Bienvenue ». Les deux autres formules se débloqueront ensuite.</p>}
         <p className="fdh-manuel-txt" style={{ marginTop: '.6rem' }}>
           Paiement par Mobile Money ou carte bancaire. L'accès est activé aussitôt et dure jusqu'à la fin de la période choisie, sans reconduction automatique.
         </p>
@@ -2681,6 +2686,8 @@ function Style() {
       .fdh-av-plans{display:flex;gap:.5rem;margin-top:.5rem}
       .fdh-av-plan{flex:1;background:#fff;border:1.5px solid #E4D3D8;border-radius:12px;padding:.7rem .4rem;text-align:center}
       .fdh-av-plan.top{border-color:#D62A5E;background:#FFF5F8}
+      .fdh-av-plan.bloque,.fdh-plan.bloque{opacity:.45;filter:grayscale(1);cursor:not-allowed}
+      .fdh-plan.bloque .fdh-plan-note{color:#9a8b92}
       .fdh-av-nom{font-size:.78rem;font-weight:800;color:#4A1546}
       .fdh-av-tag{display:block;font-size:.62rem;color:#D62A5E;font-weight:800;margin-top:.1rem}
       .fdh-av-prix{font-size:1.15rem;font-weight:900;color:#D62A5E;margin:.25rem 0 .1rem}
