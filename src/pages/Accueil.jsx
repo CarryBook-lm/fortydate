@@ -1687,6 +1687,46 @@ function Regles({ onClose }) {
   )
 }
 
+function Contact({ onClose }) {
+  const EMAIL = 'fortydate.com@gmail.com'
+  const [copie, setCopie] = useState(false)
+  const cas = [
+    ['💳', "Le paiement ne passe pas", "Mobile Money ou carte refusée, page bloquée, code non reçu : écris-nous en précisant le moyen utilisé et l'heure de la tentative."],
+    ['⭐', "Tu as payé mais pas d'accès", "Si ton abonnement Sérénité n'est pas activé après ton paiement, envoie-nous la référence de la transaction (ou une capture du reçu) : on l'active manuellement."],
+    ['👤', 'Problème de compte', "Mot de passe, photo qui ne se charge pas, profil bloqué par erreur, suppression de ton compte : on s'en occupe."],
+    ['🛡️', 'Signaler un abus', "Comportement déplacé, arnaque, faux profil : signale-le depuis la fiche du membre, et écris-nous si c'est urgent."],
+    ['💡', 'Suggestion', "Une idée pour améliorer FortyDate ? On lit tous les messages avec plaisir."],
+  ]
+  async function copier() {
+    try { await navigator.clipboard.writeText(EMAIL); setCopie(true); setTimeout(() => setCopie(false), 2000) } catch (_) {}
+  }
+  return (
+    <div className="fdh-modal-fond" onClick={onClose}>
+      <div className="fdh-modal" onClick={e => e.stopPropagation()}>
+        <button className="fdh-modal-x" onClick={onClose}>✕</button>
+        <h2 className="fdh-quest-titre">Nous contacter</h2>
+        <p className="fdh-manuel-intro">Un souci, une question ? Écris-nous, nous répondons à chaque message.</p>
+        <div className="fdh-contact-mail">
+          <div className="fdh-contact-lbl">Notre adresse e-mail</div>
+          <a className="fdh-contact-adr" href={'mailto:' + EMAIL}>{EMAIL}</a>
+          <div className="fdh-2btn" style={{ padding: '.7rem 0 0' }}>
+            <button className="b-profil" onClick={copier}>{copie ? '✓ Copié' : 'Copier'}</button>
+            <button className="b-disc" onClick={() => { window.location.href = 'mailto:' + EMAIL }}>Écrire</button>
+          </div>
+        </div>
+        <p className="fdh-manuel-intro" style={{ marginTop: '1rem' }}>Pour aller plus vite, indique le prénom de ton compte et l'e-mail avec lequel tu t'es inscrit(e).</p>
+        {cas.map(([emoji, titre, texte]) => (
+          <div key={titre} className="fdh-manuel-bloc">
+            <div className="fdh-manuel-titre"><span>{emoji}</span>{titre}</div>
+            <p className="fdh-manuel-txt">{texte}</p>
+          </div>
+        ))}
+        <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '.8rem' }} onClick={onClose}>Fermer</button>
+      </div>
+    </div>
+  )
+}
+
 function Manuel({ onClose }) {
   const sections = [
     ['👤', 'Complète ton profil', "Ajoute une belle photo et quelques mots sur toi via le menu ☰ → Mon profil. Un profil complet et sincère inspire confiance et attire les bonnes personnes."],
@@ -1732,6 +1772,7 @@ export default function Accueil({ onDeconnexion }) {
   const [modalMdp, setModalMdp] = useState(false)
   const [manuelOuvert, setManuelOuvert] = useState(false)
   const [reglesOuvert, setReglesOuvert] = useState(false)
+  const [contactOuvert, setContactOuvert] = useState(false)
   const [fiche, setFiche] = useState(null)  // profil consulté
   const [nbMsgNonLus, setNbMsgNonLus] = useState(0)
   const [nbNouvJaime, setNbNouvJaime] = useState(0)
@@ -1857,6 +1898,7 @@ export default function Accueil({ onDeconnexion }) {
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setManuelOuvert(true) }}>📖 Comment utiliser FortyDate</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setReglesOuvert(true) }}>📜 Règles du site</button>
+            <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setContactOuvert(true) }}>✉️ Nous contacter</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item" onClick={async () => {
               const res = await subscribeToPush(moi?.id)
@@ -1907,6 +1949,7 @@ export default function Accueil({ onDeconnexion }) {
       {modalMdp && <MotDePasse onClose={() => setModalMdp(false)} />}
       {manuelOuvert && <Manuel onClose={() => setManuelOuvert(false)} />}
       {reglesOuvert && <Regles onClose={() => setReglesOuvert(false)} />}
+      {contactOuvert && <Contact onClose={() => setContactOuvert(false)} />}
     </div>
   )
 }
@@ -2104,6 +2147,9 @@ function Style() {
       .fdh-act-l{color:#7A6B74;font-size:.9rem;margin-top:.35rem}
       .fdh-act-live{margin-top:.8rem;display:inline-block;background:#eafaf0;color:#1a7f45;font-weight:800;
         font-size:.82rem;padding:.35rem .8rem;border-radius:99px}
+      .fdh-contact-mail{background:#F7EDF0;border:1.5px solid #E4D3D8;border-radius:14px;padding:.9rem;text-align:center;margin-bottom:.4rem}
+      .fdh-contact-lbl{font-size:.75rem;color:#7A6B74;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+      .fdh-contact-adr{display:block;margin-top:.3rem;font-size:1rem;font-weight:800;color:#4A1546;word-break:break-all;text-decoration:none}
       .fdh-act-note{margin-top:.6rem;font-size:.75rem;color:#9b8b93;font-style:italic}
       .fdh-act-tous{margin-top:1.2rem;border-top:1px solid #F1E4E8;padding-top:.8rem;display:flex;flex-direction:column;gap:.15rem}
       .fdh-act-mini{display:flex;justify-content:space-between;align-items:center;padding:.5rem .6rem;
