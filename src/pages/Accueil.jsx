@@ -538,7 +538,7 @@ function Jaime({ moi, onVoir, onDiscuter }) {
   // Vue "tout" d'une catégorie (au clic sur un titre)
   if (plein) {
     const liste = plein === 'recus' ? recus : matchs
-    const titre = plein === 'recus' ? "Ils t'ont aimée" : 'Tes matchs'
+    const titre = plein === 'recus' ? "Ils t'ont aimée · Aime-les en retour" : 'Tes matchs (Vous vous êtes aimés)'
     return (
       <div className="fdh-jaime">
         <button className="fdh-retour-lien" onClick={() => setPlein(null)}>‹ Retour</button>
@@ -565,8 +565,8 @@ function Jaime({ moi, onVoir, onDiscuter }) {
 
   return (
     <div className="fdh-jaime">
-      {rayon('recus', "Ils t'ont aimée", recus, '💗', "Personne ne t'a encore aimée.")}
-      {rayon('matchs', 'Tes matchs', matchs, '💘', 'Pas encore de match.')}
+      {rayon('recus', "Ils t'ont aimée · Aime-les en retour", recus, '💗', "Personne ne t'a encore aimée.")}
+      {rayon('matchs', 'Tes matchs (Vous vous êtes aimés)', matchs, '💘', 'Pas encore de match.')}
       {popupMatch}
     </div>
   )
@@ -1957,7 +1957,7 @@ function Style() {
       .fdh-grid2{display:flex;flex-wrap:wrap;gap:.7rem;align-items:flex-start;justify-content:flex-start}
       .fdh-grid2 > *{flex:1 1 calc(50% - .35rem);max-width:calc(50% - .35rem);min-width:0}
       .fdh-rayon-bloc{margin-bottom:1.1rem}
-      .fdh-rayon-titre{width:100%;background:none;border:0;padding:.2rem .1rem .55rem;display:flex;align-items:center;gap:.45rem;cursor:pointer;color:#3A0F38;font-weight:800;font-size:1.02rem;text-align:left}
+      .fdh-rayon-titre{width:100%;background:none;border:0;padding:.2rem .1rem .55rem;display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;cursor:pointer;color:#3A0F38;font-weight:800;font-size:.94rem;text-align:left;line-height:1.25}
       .fdh-rayon-num{background:#F3E7EA;color:#B21F4E;font-size:.72rem;font-weight:800;padding:.05rem .45rem;border-radius:99px}
       .fdh-rayon-tout{margin-left:auto;color:#D62A5E;font-size:.78rem;font-weight:700}
       .fdh-rayon{display:flex;gap:.6rem;overflow-x:auto;padding:.1rem .1rem .5rem;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
