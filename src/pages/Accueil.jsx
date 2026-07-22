@@ -447,8 +447,8 @@ function Proximite({ moi, onVoir }) {
         <button className={'fdh-zone-b' + (zone === 'monde' && !paysPrecis ? ' on' : '')}
           onClick={() => { setZone('monde'); setPaysPrecis('') }}>🌍 Tous les pays</button>
         <button className={'fdh-zone-b fdh-zone-f' + (ouvert || nbFiltres ? ' on' : '')}
-          onClick={() => setOuvert(v => !v)} aria-label="Filtres">
-          ⚙️{nbFiltres > 0 && <span className="fdh-sous-pastille">{nbFiltres}</span>}
+          onClick={() => setOuvert(v => !v)}>
+          ⚙️ Filtre{nbFiltres > 0 && <span className="fdh-sous-pastille">{nbFiltres}</span>}
         </button>
       </div>
 
@@ -2530,7 +2530,7 @@ function Style() {
       .fdh-msg-reste b{color:#4A1546}
       .fdh-msg-reste span{color:#D62A5E;font-weight:800;cursor:pointer}
       .fdh-zone{display:flex;gap:.5rem;margin-bottom:.9rem}
-      .fdh-zone-f{flex:0 0 52px;position:relative;font-size:1rem}
+      .fdh-zone-f{flex:0 0 auto;position:relative;padding:.6rem .75rem}
       .fdh-panneau{background:#fff;border:1.5px solid #E4D3D8;border-radius:14px;padding:.9rem;margin:-.3rem 0 .9rem}
       .fdh-f-l{display:block;font-size:.75rem;font-weight:800;color:#4A1546;margin:.7rem 0 .3rem}
       .fdh-f-l:first-child{margin-top:0}
