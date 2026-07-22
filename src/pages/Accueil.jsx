@@ -2162,6 +2162,7 @@ function Manuel({ onClose }) {
     ['💬', 'Messages', "Discute avec tes matchs. La pastille rouge t'indique les messages non lus, conversation par conversation."],
     ['✨', 'Affinités', "Réponds au petit questionnaire : l'appli calcule ensuite votre pourcentage de compatibilité avec les autres membres."],
     ['⭐', 'Sérénité', "L'abonnement débloque le meilleur : voir qui t'a aimée, les visites de ton profil, le pourcentage d'affinité et les messages illimités."],
+    ['🏅', 'Les badges', "Deux badges peuvent apparaître à côté d'un prénom. Le ✓ bleu signifie « profil vérifié » : la personne nous a envoyé un selfie privé et notre équipe a confirmé que c'est bien elle. L'étoile dorée signifie « Membre VIP », c'est-à-dire un membre abonné. Pour obtenir le ✓ bleu, envoie ton selfie de vérification — il reste privé et ne s'affiche jamais sur le site."],
     ['🛡️', 'Sécurité', "Un profil te met mal à l'aise ? Tu peux le signaler ou le bloquer depuis sa fiche. Ne partage jamais tes coordonnées bancaires ni d'argent avec un inconnu."],
   ]
   return (
