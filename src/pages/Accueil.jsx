@@ -1342,6 +1342,7 @@ const ONGLETS_ACTION = [
   ['affin', '✨', "Affin'", 'affinites', 'Membres qui ont répondu au questionnaire'],
   ['match', '💞', 'Match', 'matchs', 'Matchs créés'],
   ['enligne', '🟢', 'En ligne', 'en_ligne', 'Membres actifs sur la période'],
+  ['abo', '⭐', 'Abonnés', 'abonnes', 'Membres avec un abonnement en cours'],
 ]
 
 function Admin({ onVoir }) {
@@ -1560,6 +1561,9 @@ function Admin({ onVoir }) {
                 <div className="fdh-act-l">{ong[4]}</div>
                 {sousAct === 'enligne' && (
                   <div className="fdh-act-live">🟢 {actions.maintenant ?? 0} en ligne en ce moment</div>
+                )}
+                {sousAct === 'abo' && (
+                  <div className="fdh-act-note">Chiffre à l'instant — non filtré par période</div>
                 )}
                 <div className="fdh-act-tous">
                   {ONGLETS_ACTION.map(([k, emo, lbl, champ]) => (
@@ -2063,6 +2067,7 @@ function Style() {
       .fdh-act-l{color:#7A6B74;font-size:.9rem;margin-top:.35rem}
       .fdh-act-live{margin-top:.8rem;display:inline-block;background:#eafaf0;color:#1a7f45;font-weight:800;
         font-size:.82rem;padding:.35rem .8rem;border-radius:99px}
+      .fdh-act-note{margin-top:.6rem;font-size:.75rem;color:#9b8b93;font-style:italic}
       .fdh-act-tous{margin-top:1.2rem;border-top:1px solid #F1E4E8;padding-top:.8rem;display:flex;flex-direction:column;gap:.15rem}
       .fdh-act-mini{display:flex;justify-content:space-between;align-items:center;padding:.5rem .6rem;
         border-radius:10px;font-size:.85rem;color:#5c4f57;cursor:pointer}
