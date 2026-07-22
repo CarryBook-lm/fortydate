@@ -1733,9 +1733,12 @@ function Annonces({ moi, onVoir, onDiscuter }) {
   return (
     <div>
       {!edition && (
-        <button className="fdh-teaser" onClick={() => { setTexte(mienne ? mienne.contenu : ''); setEdition(true); setErr('') }}>
-          {mienne ? '✏️ Modifier mon annonce' : '📢 Publier mon annonce — dis ce que tu cherches'}
-        </button>
+        <div className="fdh-annonce-intro">
+          <p className="fdh-annonce-accroche">Publie une annonce et trouve ton âme sœur</p>
+          <button className="fdh-annonce-cta" onClick={() => { setTexte(mienne ? mienne.contenu : ''); setEdition(true); setErr('') }}>
+            {mienne ? '✏️ Modifier mon annonce' : '📢 Publier mon annonce'}
+          </button>
+        </div>
       )}
 
       {edition && (
@@ -2545,7 +2548,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 22/07 · #AI</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 22/07 · #AJ</div>
           </div>
         </div>
       )}
@@ -2624,6 +2627,13 @@ function Style() {
       .fdh-logo .f{color:#4A1546}.fdh-logo .d{color:#D62A5E}
       .fdh-logo-img{height:48px;width:auto;max-width:58%;display:block;object-fit:contain;flex:0 1 auto;min-width:0}
       .fdh-annonce-btn{background:none;border:0;font-size:1.2rem;cursor:pointer;line-height:1;padding:0;flex:0 0 auto;margin-left:.7rem}
+      .fdh-annonce-intro{text-align:center;margin:0 0 1.1rem}
+      .fdh-annonce-accroche{font-size:1rem;font-weight:800;color:#4A1546;margin:0 0 .7rem;line-height:1.35}
+      .fdh-annonce-cta{width:100%;background:#D62A5E;color:#fff;border:0;border-radius:14px;
+        padding:.95rem 1rem;font-size:1rem;font-weight:800;cursor:pointer;white-space:nowrap;
+        box-shadow:0 6px 16px -8px rgba(214,42,94,.9);transition:.15s}
+      .fdh-annonce-cta:hover{background:#B21F4E}
+      .fdh-annonce-cta:active{transform:scale(.98)}
       .fdh-annonce{background:#fff;border:1.5px solid #EEE0E4;border-radius:14px;padding:.9rem;margin-bottom:.7rem}
       .fdh-annonce.mienne{border-color:#C69A4E;background:#FFFCF6}
       .fdh-annonce-tete{display:flex;align-items:flex-start;gap:.6rem}
