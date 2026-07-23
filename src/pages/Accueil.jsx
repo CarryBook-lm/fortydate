@@ -235,8 +235,9 @@ function presence(d) {
 
 function Presence({ p, avecTexte = false }) {
   const s = presence(p?.derniere_activite)
+  // Pastille seule : verte si en ligne, jaune sinon (toujours affichée)
+  if (!avecTexte) return <span className={'fdh-point' + (s?.enLigne ? ' on' : '')} title={s?.texte || 'Hors ligne'} />
   if (!s) return null
-  if (!avecTexte) return <span className={'fdh-point' + (s.enLigne ? ' on' : '')} title={s.texte} />
   return (
     <span className={'fdh-presence' + (s.enLigne ? ' on' : '')}>
       <span className={'fdh-point' + (s.enLigne ? ' on' : '')} />{s.texte}
@@ -561,7 +562,6 @@ function Proximite({ moi, onVoir }) {
             <div className="fdh-carte-photo"><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></div>
             <div className="fdh-nom"><Presence p={p} />
               <span className="fdh-nom-txt">{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} /></span></div>
-            <div className="fdh-vu"><Presence p={p} avecTexte /></div>
           </button>
         ))}
       </div>
@@ -2612,7 +2612,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AN</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AO</div>
           </div>
         </div>
       )}
@@ -2769,7 +2769,7 @@ function Style() {
       .fdh-photo{width:100%;object-fit:cover;display:block;background:#EDE0E4}
       .fdh-vide{display:grid;place-items:center;font-size:2.4rem;font-weight:800;color:#fff;background:linear-gradient(150deg,#7A2233,#D62A5E)}
       .fdh-nom{padding:.5rem .6rem;font-size:.82rem;font-weight:700;display:flex;align-items:center;gap:.3rem;white-space:nowrap;overflow:hidden;min-height:2.3rem}
-      .fdh-point{width:8px;height:8px;border-radius:50%;background:#c9bcc2;flex:0 0 auto}
+      .fdh-point{width:9px;height:9px;border-radius:50%;background:#F0B429;flex:0 0 auto}
       .fdh-point.on{background:#3ecf6b;box-shadow:0 0 0 2px rgba(62,207,107,.25)}
       .fdh-presence{display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;color:#9a8b92;font-weight:600}
       .fdh-presence.on{color:#1a9e52}
