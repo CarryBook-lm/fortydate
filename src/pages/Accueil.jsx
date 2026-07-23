@@ -197,6 +197,27 @@ function sepIndicatif(tel) {
   return { indicatif: '+237', local: t.replace(/\D/g, '') }
 }
 
+// Envoi du selfie de vérification dans le bucket PRIVÉ « verifications ».
+// On enregistre seulement le CHEMIN du fichier (jamais une URL publique).
+async function envoyerSelfieVerif(file, userId) {
+  const image = await new Promise((ok, ko) => {
+    const r = new FileReader()
+    r.onload = () => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = r.result }
+    r.onerror = ko; r.readAsDataURL(file)
+  })
+  const max = 1000
+  const ech = Math.min(1, max / Math.max(image.width, image.height))
+  const c = document.createElement('canvas')
+  c.width = Math.round(image.width * ech); c.height = Math.round(image.height * ech)
+  c.getContext('2d').drawImage(image, 0, 0, c.width, c.height)
+  const blob = await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.85))
+  const chemin = `${userId}/selfie-${Date.now()}.jpg`
+  const { error } = await supabase.storage.from('verifications')
+    .upload(chemin, blob, { contentType: 'image/jpeg', upsert: true })
+  if (error) throw error
+  return chemin
+}
+
 // ---- Statut de présence, calculé depuis profiles.derniere_activite ----
 function presence(d) {
   if (!d) return null
@@ -1914,7 +1935,17 @@ function Admin({ onVoir }) {
       const { data } = await supabase.from('profiles')
         .select('id, prenom, date_naissance, photo_principale, selfie_url, verifie, pays_residence')
         .not('selfie_url', 'is', null).eq('verifie', false).limit(50)
-      if (!annule) setAVerifier(data || [])
+      // Lien temporaire (1 h) pour lire le selfie du bucket privé.
+      // Les anciens enregistrements contiennent une URL publique : on la garde telle quelle.
+      const avec = await Promise.all((data || []).map(async v => {
+        let vue = v.selfie_url
+        if (vue && !vue.startsWith('http')) {
+          const { data: sg } = await supabase.storage.from('verifications').createSignedUrl(vue, 3600)
+          vue = sg?.signedUrl || null
+        }
+        return { ...v, selfie_vue: vue }
+      }))
+      if (!annule) setAVerifier(avec)
     })()
     return () => { annule = true }
   }, [vue])
@@ -2100,7 +2131,7 @@ function Admin({ onVoir }) {
               <div key={v.id} className="fdh-verif">
                 <div className="fdh-verif-photos">
                   <figure><img src={v.photo_principale} alt="" /><figcaption>Photo de profil</figcaption></figure>
-                  <figure><img src={v.selfie_url} alt="" /><figcaption>Selfie privé</figcaption></figure>
+                  <figure><img src={v.selfie_vue || undefined} alt="" /><figcaption>Selfie privé</figcaption></figure>
                 </div>
                 <div className="fdh-verif-bas">
                   <div className="fdh-adm-nom" onClick={() => onVoir(v.id)}>
@@ -2264,8 +2295,8 @@ function Verification({ moi, onClose }) {
   async function envoyer(file) {
     setEnvoi(true); setErr('')
     try {
-      const url = await uploadPhotoOptimisee(file, moi.id + '-verif')
-      const { error } = await supabase.from('profiles').update({ selfie_url: url }).eq('id', moi.id)
+      const chemin = await envoyerSelfieVerif(file, moi.id)
+      const { error } = await supabase.from('profiles').update({ selfie_url: chemin }).eq('id', moi.id)
       if (error) throw error
       setEtat('attente')
     } catch (e) {
@@ -2581,7 +2612,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 22/07 · #AL</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AN</div>
           </div>
         </div>
       )}
@@ -2690,13 +2721,16 @@ function Style() {
       /* Drawer */
       .fdh-drawer-fond{position:fixed;inset:0;background:rgba(36,10,42,.5);z-index:60}
       .fdh-drawer{position:absolute;top:0;left:0;bottom:0;width:78%;max-width:300px;background:#fff;
-        box-shadow:6px 0 30px -10px rgba(0,0,0,.4);padding:1.4rem 1rem;display:flex;flex-direction:column;gap:.4rem}
-      .fdh-drawer-tete{display:flex;align-items:center;gap:.8rem;padding-bottom:1rem;margin-bottom:.6rem;border-bottom:1px solid #EEE0E4}
+        box-shadow:6px 0 30px -10px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:.4rem;
+        padding:1.4rem 1rem;padding-top:calc(1.4rem + env(safe-area-inset-top));
+        padding-bottom:calc(1.4rem + env(safe-area-inset-bottom));
+        overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+      .fdh-drawer-tete{flex:0 0 auto;display:flex;align-items:center;gap:.8rem;padding-bottom:1rem;margin-bottom:.6rem;border-bottom:1px solid #EEE0E4}
       .fdh-drawer-tete .fdh-photo{width:54px;height:54px;border-radius:50%;object-fit:cover}
       .fdh-drawer-tete .fdh-vide{width:54px;height:54px;border-radius:50%;font-size:1.4rem}
       .fdh-drawer-nom{font-weight:800;color:#3A0F38}
       .fdh-drawer-mail{font-size:.82rem;color:#9a8b92}
-      .fdh-drawer-item{text-align:left;background:none;border:0;padding:.9rem .7rem;border-radius:10px;
+      .fdh-drawer-item{flex:0 0 auto;text-align:left;background:none;border:0;padding:.9rem .7rem;border-radius:10px;
         font-size:1rem;color:#3A0F38;cursor:pointer;font-weight:600}
       .fdh-drawer-item:hover{background:#F3E7EA}
       .fdh-drawer-item.deco{color:#b21f4e;margin-top:auto}
