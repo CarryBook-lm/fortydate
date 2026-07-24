@@ -479,7 +479,11 @@ function Proximite({ moi, onVoir }) {
         if (situation) q = q.eq('situation', situation)
         if (religion) q = q.ilike('religion', '%' + religion + '%')
 
-        const { data, error } = await q.limit(100)
+        // Les plus récemment actifs d'abord : les membres en ligne remontent en tête,
+        // ceux qui n'ont jamais été vus se placent en dernier.
+        const { data, error } = await q
+          .order('derniere_activite', { ascending: false, nullsFirst: false })
+          .limit(100)
         if (error) throw error
         if (!annule) setProfils(data || [])
       } catch (e) { if (!annule) setErr(e.message || 'Erreur.') }
@@ -2612,7 +2616,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AO</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AP</div>
           </div>
         </div>
       )}
