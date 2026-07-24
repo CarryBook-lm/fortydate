@@ -2109,8 +2109,9 @@ function Admin({ onVoir }) {
     const hommes = ms.filter(x => x.genre === 'homme').length
     const femmes = ms.filter(x => x.genre === 'femme').length
     const bloques = ms.filter(x => x.bloque).length
+    const verifies = ms.filter(x => x.verifie).length
     const revenus = ps.reduce((s, p) => s + (Number(p.montant) || 0), 0)
-    return { total, hommes, femmes, bloques, revenus }
+    return { total, hommes, femmes, bloques, verifies, revenus }
   })()
 
   // Répartition par pays (sur la période choisie)
@@ -2134,20 +2135,32 @@ function Admin({ onVoir }) {
   }
 
   async function basculerBlocage(m) {
-    setMsg('')
     const nouv = !m.bloque
+    const qui = m.prenom || 'ce membre'
+    const question = nouv
+      ? `Bloquer ${qui} ? Il ne pourra plus se connecter ni apparaître dans l'application.`
+      : `Débloquer ${qui} ? Il retrouvera l'accès à son compte.`
+    if (!window.confirm(question)) return
+    setMsg('')
     try { await appelAdmin({ action: 'bloquer', id: m.id, valeur: nouv }) }
     catch (e) { setMsg('Échec : ' + e.message); return }
     setMembres(list => list.map(x => x.id === m.id ? { ...x, bloque: nouv } : x))
     setSignalements(list => list.map(s => s.signale_id === m.id ? { ...s, signale_bloque: nouv } : s))
+    setFlash(nouv ? `${qui} a été bloqué` : `${qui} a été débloqué`)
   }
 
-  async function basculerBlocageId(id, nouv) {
+  async function basculerBlocageId(id, nouv, nom) {
+    const qui = nom || 'ce membre'
+    const question = nouv
+      ? `Bloquer ${qui} ? Il ne pourra plus se connecter ni apparaître dans l'application.`
+      : `Débloquer ${qui} ? Il retrouvera l'accès à son compte.`
+    if (!window.confirm(question)) return
     setMsg('')
     try { await appelAdmin({ action: 'bloquer', id, valeur: nouv }) }
     catch (e) { setMsg('Échec : ' + e.message); return }
     setMembres(list => list.map(x => x.id === id ? { ...x, bloque: nouv } : x))
     setSignalements(list => list.map(s => s.signale_id === id ? { ...s, signale_bloque: nouv } : s))
+    setFlash(nouv ? `${qui} a été bloqué` : `${qui} a été débloqué`)
   }
 
   async function supprimerMembre(m) {
@@ -2156,6 +2169,7 @@ function Admin({ onVoir }) {
     try { await appelAdmin({ action: 'supprimer', id: m.id }) }
     catch (e) { setMsg('Échec : ' + e.message); return }
     setMembres(list => list.filter(x => x.id !== m.id))
+    setFlash(`Le profil de ${m.prenom || 'ce membre'} a été supprimé`)
   }
 
   const membresFiltres = (membres || []).filter(m => {
@@ -2198,6 +2212,7 @@ function Admin({ onVoir }) {
 
           <div className="fdh-stats">
             <div className="fdh-stat"><div className="fdh-stat-n">{stats.total}</div><div className="fdh-stat-l">Nouveaux membres</div></div>
+            <div className="fdh-stat"><div className="fdh-stat-n">{stats.verifies}</div><div className="fdh-stat-l">✓ Vérifiés</div></div>
             <div className="fdh-stat or"><div className="fdh-stat-n">{stats.revenus.toLocaleString('fr-FR')} F</div><div className="fdh-stat-l">Revenus encaissés</div></div>
             <div className="fdh-stat"><div className="fdh-stat-n">{stats.hommes}</div><div className="fdh-stat-l">Hommes</div></div>
             <div className="fdh-stat"><div className="fdh-stat-n">{stats.femmes}</div><div className="fdh-stat-l">Femmes</div></div>
@@ -2309,7 +2324,7 @@ function Admin({ onVoir }) {
                   <div className="fdh-adm-sous">Signalé {s.signale_nb_recus} fois</div>
                 </div>
                 <button className={'fdh-adm-btn' + (s.signale_bloque ? '' : ' danger')}
-                  onClick={() => basculerBlocageId(s.signale_id, !s.signale_bloque)}>
+                  onClick={() => basculerBlocageId(s.signale_id, !s.signale_bloque, s.signale_nom)}>
                   {s.signale_bloque ? 'Débloquer' : 'Bloquer'}
                 </button>
               </div>
@@ -2865,7 +2880,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #BA</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #BB</div>
           </div>
         </div>
       )}
