@@ -1254,7 +1254,7 @@ function Bulle({ m, moi, msgs, onRepondre }) {
   )
 }
 
-function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
+function Chat({ moi, contact, onRetour, onLu, onFaireAbo, onVoir }) {
   const [msgs, setMsgs] = useState([])
   const [texte, setTexte] = useState('')
   const [envoi, setEnvoi] = useState(false)
@@ -1363,11 +1363,14 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
     <div className="fdh-chat">
       <div className="fdh-chat-head">
         <button className="fdh-retour" onClick={onRetour}>‹</button>
-        <Avatar url={contact.photo_principale} prenom={contact.prenom} taille="38px" />
-        <span className="fdh-chat-nom">{contact.prenom}<Badge p={contact} />
-          {ecrit
-            ? <span className="fdh-ecrit-txt">en train d'écrire…</span>
-            : <Presence p={contact} avecTexte />}</span>
+        <button className="fdh-chat-profil" onClick={() => onVoir && onVoir(contact.id)}
+          title={`Voir le profil de ${contact.prenom}`}>
+          <Avatar url={contact.photo_principale} prenom={contact.prenom} taille="38px" />
+          <span className="fdh-chat-nom">{contact.prenom}<Badge p={contact} />
+            {ecrit
+              ? <span className="fdh-ecrit-txt">en train d'écrire…</span>
+              : <Presence p={contact} avecTexte />}</span>
+        </button>
       </div>
 
       <div className="fdh-chat-fil">
@@ -1409,7 +1412,7 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
     </div>
   )
 }
-function Messages({ moi, ouvrir, setOuvrir, onLu, onFaireAbo }) {
+function Messages({ moi, ouvrir, setOuvrir, onLu, onFaireAbo, onVoir }) {
   const [matchs, setMatchs] = useState(null)
   const [err, setErr] = useState('')
   const [nonLus, setNonLus] = useState({})
@@ -1436,7 +1439,7 @@ function Messages({ moi, ouvrir, setOuvrir, onLu, onFaireAbo }) {
       .subscribe()
     return () => { annule = true; supabase.removeChannel(canal) }
   }, [moi, ouvrir])
-  if (ouvrir) return <Chat moi={moi} contact={ouvrir} onRetour={() => setOuvrir(null)} onLu={onLu} onFaireAbo={onFaireAbo} />
+  if (ouvrir) return <Chat moi={moi} contact={ouvrir} onRetour={() => setOuvrir(null)} onLu={onLu} onFaireAbo={onFaireAbo} onVoir={onVoir} />
   if (err) return <div className="fdh-msg">{err}</div>
   if (matchs === null) return <div className="fdh-msg">Chargement…</div>
   if (matchs.length === 0)
@@ -1447,7 +1450,10 @@ function Messages({ moi, ouvrir, setOuvrir, onLu, onFaireAbo }) {
     <div className="fdh-convs">
       {matchs.map(p => (
         <button key={p.id} className="fdh-conv" onClick={() => setOuvrir(p)}>
-          <Avatar url={p.photo_principale} prenom={p.prenom} taille="52px" />
+          <span className="fdh-conv-av" onClick={e => { e.stopPropagation(); onVoir && onVoir(p.id) }}
+            title={`Voir le profil de ${p.prenom}`}>
+            <Avatar url={p.photo_principale} prenom={p.prenom} taille="52px" />
+          </span>
           <div className="fdh-conv-txt"><div className="fdh-conv-nom">{p.prenom}<Badge p={p} size={16} /></div>
             <div className={'fdh-conv-apercu' + (nonLus[p.id] ? ' fort' : '')}>
               {nonLus[p.id] ? `${nonLus[p.id]} nouveau${nonLus[p.id] > 1 ? 'x' : ''} message${nonLus[p.id] > 1 ? 's' : ''}` : 'Appuie pour discuter'}</div></div>
@@ -2880,7 +2886,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #BC</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #BD</div>
           </div>
         </div>
       )}
@@ -2894,7 +2900,7 @@ export default function Accueil({ onDeconnexion }) {
         {!overlay && onglet === 'proximite' && <Proximite moi={moi} onVoir={voirProfil} />}
         {!overlay && onglet === 'rencontres' && <Rencontres moi={moi} />}
         {!overlay && onglet === 'jaime' && <Jaime moi={moi} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
-        {!overlay && onglet === 'messages' && <Messages moi={moi} ouvrir={conversationAvec} setOuvrir={setConversationAvec} onLu={rafraichirBadges} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
+        {!overlay && onglet === 'messages' && <Messages moi={moi} ouvrir={conversationAvec} setOuvrir={setConversationAvec} onLu={rafraichirBadges} onFaireAbo={() => ouvrirOverlay('abonnement')} onVoir={voirProfil} />}
         {!overlay && onglet === 'match' && <MatchAffinites moi={moi} mesReponses={mesReponses} onFaireQuestionnaire={() => ouvrirOverlay('questionnaire')} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
         {!overlay && onglet === 'visites' && <Visites moi={moi} onVoir={voirProfil} onFaireAbo={() => ouvrirOverlay('abonnement')} onDiscuter={ouvrirDiscussion} />}
         {!overlay && onglet === 'admin' && estAdmin && <Admin onVoir={(id) => voirProfil(id, false)} />}
@@ -3365,6 +3371,11 @@ function Style() {
       .fdh-bande-nom{font-weight:800;font-size:.88rem;display:flex;align-items:center}
       .fdh-bande-msg{font-size:.8rem;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .fdh-bande-x{flex:0 0 auto;opacity:.6;font-size:.9rem;padding:0 .2rem}
+      .fdh-chat-profil{flex:1;min-width:0;display:flex;align-items:center;gap:.6rem;
+        background:none;border:0;padding:0;cursor:pointer;text-align:left}
+      .fdh-chat-profil:active{opacity:.7}
+      .fdh-conv-av{flex:0 0 auto;display:block;border-radius:50%;cursor:pointer}
+      .fdh-conv-av:active{opacity:.7}
       .fdh-chat-nom{font-weight:800;color:#3A0F38}
       .fdh-chat-fil{flex:1;min-height:0;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.4rem;-webkit-overflow-scrolling:touch}
       .fdh-chat-vide{text-align:center;color:#9a8b92;margin-top:1.5rem}
