@@ -92,8 +92,10 @@ function BanniereInstall() {
    composant monté plus tard. */
 let promptInstall = null
 if (typeof window !== 'undefined') {
-  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); promptInstall = e })
-  window.addEventListener('appinstalled', () => { promptInstall = null })
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); promptInstall = e; window.__fdInstall = e
+  })
+  window.addEventListener('appinstalled', () => { promptInstall = null; window.__fdInstall = null })
 }
 
 /* ---------- Rappel d'installation (pop-up au centre de l'écran) ----------
@@ -119,7 +121,7 @@ function PopupInstall() {
 
     setIos(/iphone|ipad|ipod/i.test(window.navigator.userAgent))
 
-    const onPrompt = (e) => { e.preventDefault(); promptInstall = e; setPrompt(e) }
+    const onPrompt = (e) => { e.preventDefault(); promptInstall = e; window.__fdInstall = e; setPrompt(e) }
     const onInstalled = () => {
       try { localStorage.setItem('fd_install', JSON.stringify({ installe: true })) } catch (_) {}
       setVisible(false)
@@ -154,6 +156,7 @@ function PopupInstall() {
     prompt.prompt()
     const res = await prompt.userChoice
     promptInstall = null   // un événement ne peut servir qu'une fois
+    window.__fdInstall = null
     setPrompt(null)
     if (res.outcome === 'accepted') {
       try { localStorage.setItem('fd_install', JSON.stringify({ installe: true })) } catch (_) {}

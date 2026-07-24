@@ -2299,6 +2299,82 @@ function Avantages({ moi, onClose, onFaireAbo }) {
   )
 }
 
+function InstallerApp({ onClose }) {
+  const [prompt, setPrompt] = useState(typeof window !== 'undefined' ? (window.__fdInstall || null) : null)
+  const [deja, setDeja] = useState(false)
+  const [ios, setIos] = useState(false)
+  const [etat, setEtat] = useState('')
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setDeja(window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true)
+    setIos(/iphone|ipad|ipod/i.test(window.navigator.userAgent))
+    const onPrompt = (e) => { e.preventDefault(); window.__fdInstall = e; setPrompt(e) }
+    window.addEventListener('beforeinstallprompt', onPrompt)
+    return () => window.removeEventListener('beforeinstallprompt', onPrompt)
+  }, [])
+
+  async function installer() {
+    if (!prompt) return
+    setEtat('attente')
+    prompt.prompt()
+    const res = await prompt.userChoice
+    window.__fdInstall = null; setPrompt(null)
+    setEtat(res.outcome === 'accepted' ? 'ok' : '')
+  }
+
+  const directe = !ios && !!prompt
+
+  return (
+    <div className="fdh-modal-fond" onClick={onClose}>
+      <div className="fdh-modal" onClick={e => e.stopPropagation()}>
+        <button className="fdh-modal-x" onClick={onClose}>✕</button>
+        <h2 className="fdh-quest-titre">📲 Installer l'application</h2>
+
+        {deja || etat === 'ok' ? (
+          <div className="fdh-modal-fin">
+            <div className="fdh-modal-emoji">✅</div>
+            <h2>C'est déjà fait</h2>
+            <p>FortyDate est installée sur ton écran d'accueil. Ouvre-la depuis son icône pour profiter du plein écran et des notifications.</p>
+          </div>
+        ) : (
+          <>
+            <p className="fdh-manuel-intro">
+              Installe FortyDate sur ton écran d'accueil : elle s'ouvre comme une vraie application,
+              plus vite, sans passer par le navigateur — et tu reçois tes notifications même appli fermée.
+            </p>
+
+            {directe ? (
+              <button className="fdh-annonce-cta" disabled={etat === 'attente'} onClick={installer}>
+                {etat === 'attente' ? '…' : '📲 Installer maintenant'}
+              </button>
+            ) : (
+              <div className="fdh-manuel-bloc">
+                <div className="fdh-manuel-titre"><span>👉</span>Comment faire</div>
+                <p className="fdh-manuel-txt">
+                  {ios ? (
+                    <>1. Appuie sur <b>Partager ⬆️</b> en bas de Safari<br />
+                       2. Choisis <b>« Sur l'écran d'accueil »</b><br />
+                       3. Appuie sur <b>Ajouter</b></>
+                  ) : (
+                    <>1. Ouvre le menu <b>⋮</b> de Chrome, en haut à droite<br />
+                       2. Choisis <b>« Ajouter à l'écran d'accueil »</b><br />
+                       3. Confirme avec <b>Installer</b></>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {ios && (
+              <p className="fdh-av-note">Sur iPhone, l'installation est indispensable pour recevoir les notifications.</p>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function Verification({ moi, onClose }) {
   const [etat, setEtat] = useState(
     moi?.verifie ? 'verifie' : (moi?.selfie_url ? 'attente' : 'vide')
@@ -2465,6 +2541,7 @@ export default function Accueil({ onDeconnexion }) {
   const [contactOuvert, setContactOuvert] = useState(false)
   const [avantagesOuvert, setAvantagesOuvert] = useState(false)
   const [verifOuvert, setVerifOuvert] = useState(false)
+  const [installOuvert, setInstallOuvert] = useState(false)
   const [nouvAnnonces, setNouvAnnonces] = useState(0)
   const [fiche, setFiche] = useState(null)  // profil consulté
   const [nbMsgNonLus, setNbMsgNonLus] = useState(0)
@@ -2611,6 +2688,7 @@ export default function Accueil({ onDeconnexion }) {
                 <div className="fdh-drawer-mail">{NOM_PAYS[moi?.pays_residence] || ''}</div></div>
             </div>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('profil')}>👤 Mon profil</button>
+            <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setInstallOuvert(true) }}>📲 Installer l'application</button>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('annonces')}>📢 Annonces</button>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('questionnaire')}>📝 Questionnaire d'affinités</button>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Devenir membre VIP</button>
@@ -2626,7 +2704,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AQ</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AR</div>
           </div>
         </div>
       )}
@@ -2672,6 +2750,7 @@ export default function Accueil({ onDeconnexion }) {
       {manuelOuvert && <Manuel onClose={() => setManuelOuvert(false)} />}
       {reglesOuvert && <Regles onClose={() => setReglesOuvert(false)} />}
       {contactOuvert && <Contact onClose={() => setContactOuvert(false)} />}
+      {installOuvert && <InstallerApp onClose={() => setInstallOuvert(false)} />}
       {verifOuvert && <Verification moi={moi} onClose={() => setVerifOuvert(false)} />}
       {avantagesOuvert && <Avantages moi={moi} onClose={() => setAvantagesOuvert(false)} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
     </div>
