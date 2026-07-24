@@ -721,11 +721,7 @@ function Jaime({ moi, onVoir, onDiscuter, onFaireAbo }) {
   const [plein, setPlein] = useState(null) // null | 'recus' | 'matchs'
   const [aimeEnCours, setAimeEnCours] = useState(null)
   const [nouveauMatch, setNouveauMatch] = useState(null)
-  // Date de la dernière visite : lue une seule fois, pour marquer les nouveautés de CETTE visite
-  const [vuAt] = useState(() => {
-    try { return localStorage.getItem('fd_jaime_vu_at') || '' } catch (_) { return '' }
-  })
-  const estNouveau = (p) => !!p?.quand && (!vuAt || p.quand > vuAt)
+  const estNouveau = (p) => p?.vu === false
 
   // Aimer en retour quelqu'un qui nous a déjà aimé(e) => c'est forcément un match
   async function aimerEnRetour(p) {
@@ -750,20 +746,20 @@ function Jaime({ moi, onVoir, onDiscuter, onFaireAbo }) {
           supabase.rpc('mes_matchs'), supabase.rpc('qui_m_a_aime'), supabase.rpc('mes_jaime_dates')
         ])
         if (m.error) throw m.error; if (r.error) throw r.error
-        const dates = {}
+        const infos = {}
         for (const x of (d.data || [])) {
-          if (!dates[x.autre_id] || x.quand > dates[x.autre_id]) dates[x.autre_id] = x.quand
+          if (!infos[x.autre_id] || x.quand > infos[x.autre_id].quand) infos[x.autre_id] = x
         }
         const habiller = (liste) => (liste || [])
-          .map(x => ({ ...x, quand: dates[x.id] || null }))
+          .map(x => ({ ...x, quand: infos[x.id]?.quand || null, vu: infos[x.id]?.vu !== false }))
           .sort((a, b) => String(b.quand || '').localeCompare(String(a.quand || '')))
         const [mp, rp] = await Promise.all([
           ajouterPresence(habiller(m.data)), ajouterPresence(habiller(r.data))
         ])
         if (!annule) {
           setMatchs(mp); setRecus(rp)
-          // On note la visite APRÈS l'affichage : les « Nouveau » restent visibles cette fois-ci
-          try { localStorage.setItem('fd_jaime_vu_at', new Date().toISOString()) } catch (_) {}
+          // On marque comme vus APRÈS l'affichage : les « NEW » restent visibles cette fois-ci
+          supabase.rpc('marquer_jaime_vus').then(() => {}).catch(() => {})
         }
       } catch (e) { if (!annule) setErr(e.message || 'Erreur.') }
     })()
@@ -2687,10 +2683,9 @@ export default function Accueil({ onDeconnexion }) {
       setNbMsgNonLus(count || 0)
     } catch (_) {}
     try {
-      const { data } = await supabase.rpc('qui_m_a_aime')
-      const total = Array.isArray(data) ? data.length : 0
-      const vus = parseInt(localStorage.getItem('fd_jaime_vus') || '0', 10)
-      setNbNouvJaime(Math.max(0, total - vus))
+      // Compté côté serveur (colonne likes.vu_at) : identique sur tous les appareils
+      const { data } = await supabase.rpc('nb_jaime_non_vus')
+      setNbNouvJaime(typeof data === 'number' ? data : 0)
     } catch (_) {}
   }
 
@@ -2780,12 +2775,7 @@ export default function Accueil({ onDeconnexion }) {
   const abonne = estAbonne(moi)
   const allerOnglet = (id) => {
     setOverlay(null); setMenuOuvert(false); setOnglet(id)
-    if (id === 'jaime') {
-      setNbNouvJaime(0)
-      supabase.rpc('qui_m_a_aime').then(({ data }) => {
-        localStorage.setItem('fd_jaime_vus', String(Array.isArray(data) ? data.length : 0))
-      }).catch(() => {})
-    }
+    if (id === 'jaime') setNbNouvJaime(0)
   }
   const ouvrirOverlay = (v) => {
     if (v === 'annonces') {
@@ -2846,7 +2836,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #AX</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #AY</div>
           </div>
         </div>
       )}
