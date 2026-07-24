@@ -1,15 +1,61 @@
-// Service worker minimal — requis pour rendre FortyDate installable
-const CACHE = 'fortydate-v1'
+// FortyDate — service worker
+// v2 : ne provoque plus de page blanche en cas de coupure réseau.
+const CACHE = 'fortydate-v2'
+const REPLI = '/hors-ligne.html'
 
-self.addEventListener('install', (e) => { self.skipWaiting() })
+self.addEventListener('install', (e) => {
+  self.skipWaiting()
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll([REPLI])).catch(() => {}))
+})
 
-self.addEventListener('activate', (e) => { e.waitUntil(self.clients.claim()) })
+self.addEventListener('activate', (e) => {
+  e.waitUntil((async () => {
+    // On efface les anciens caches (dont ceux de la v1)
+    const noms = await caches.keys()
+    await Promise.all(noms.filter(n => n !== CACHE).map(n => caches.delete(n)))
+    await self.clients.claim()
+  })())
+})
 
 self.addEventListener('fetch', (e) => {
-  // Stratégie simple : réseau d'abord, puis on laisse passer.
-  e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
-  )
+  const req = e.request
+  if (req.method !== 'GET') return
+
+  let url
+  try { url = new URL(req.url) } catch (_) { return }
+
+  // On ne touche JAMAIS aux appels serveur : ni /api/, ni Supabase, ni domaines tiers.
+  if (url.origin !== self.location.origin) return
+  if (url.pathname.startsWith('/api/')) return
+
+  // Ouverture d'une page : réseau d'abord, sinon page de repli lisible.
+  if (req.mode === 'navigate') {
+    e.respondWith((async () => {
+      try {
+        return await fetch(req)
+      } catch (_) {
+        return (await caches.match(req)) || (await caches.match(REPLI)) ||
+          new Response('<h1>Hors ligne</h1>', { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+      }
+    })())
+    return
+  }
+
+  // Ressources statiques : réseau, copie en cache, repli sur le cache si le réseau tombe.
+  e.respondWith((async () => {
+    try {
+      const r = await fetch(req)
+      if (r && r.ok && /\.(js|css|png|jpg|jpeg|svg|webmanifest)$/i.test(url.pathname)) {
+        const copie = r.clone()
+        caches.open(CACHE).then(c => c.put(req, copie)).catch(() => {})
+      }
+      return r
+    } catch (_) {
+      const cache = await caches.match(req)
+      if (cache) return cache
+      return new Response('', { status: 504, statusText: 'Hors ligne' })
+    }
+  })())
 })
 
 // --- Notifications push (affichage) ---
@@ -27,8 +73,6 @@ self.addEventListener('push', (e) => {
     badge: data.badge || '/icon-192.png',
     tag: data.tag,
     renotify: true,
-    // Vibration + son : c'est ce qui pousse Android à afficher la bannière
-    // en haut de l'écran au lieu de la ranger silencieusement dans le tiroir.
     vibrate: [200, 100, 200],
     silent: false,
     requireInteraction: false,
