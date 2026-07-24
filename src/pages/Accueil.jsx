@@ -580,6 +580,7 @@ function Rencontres({ moi }) {
   const [match, setMatch] = useState(null)
   const [anim, setAnim] = useState('')
   const [drag, setDrag] = useState(0)
+  const [dernier, setDernier] = useState(null)   // { profil, aime } — pour pouvoir annuler
   const depart = useRef(null)
 
   // --- Balayage : feuillette seulement. Le profil revient plus tard tant qu'on n'a pas
@@ -631,12 +632,31 @@ function Rencontres({ moi }) {
       if (aime) { const { data } = await supabase.rpc('est_un_match', { p_cible: cible.id }); if (data === true) setMatch(cible) }
     } catch (e) {}
     setTimeout(() => {
-      // ❤ ou ✕ = decision : le profil sort definitivement du paquet
       const reste = profils.filter(x => x.id !== cible.id)
       setProfils(reste)
       setI(n => (reste.length === 0 || n >= reste.length ? 0 : n))
       setAnim('')
+      setDernier({ profil: cible, aime })   // quelques secondes pour se raviser
     }, 260)
+  }
+
+  // Le rappel « Annuler » s'efface tout seul après 8 secondes
+  useEffect(() => {
+    if (!dernier) return
+    const t = setTimeout(() => setDernier(null), 8000)
+    return () => clearTimeout(t)
+  }, [dernier])
+
+  async function annuler() {
+    if (!dernier) return
+    const { profil } = dernier
+    setDernier(null)
+    const { error } = await supabase.from('likes').delete()
+      .eq('auteur_id', moi.id).eq('cible_id', profil.id).select()
+    if (error) { setErr("Impossible d'annuler. Réessaie."); return }
+    setMatch(null)
+    setProfils(l => (l || []).some(x => x.id === profil.id) ? l : [profil, ...(l || [])])
+    setI(0)
   }
 
   if (err) return <div className="fdh-msg">{err}</div>
@@ -676,6 +696,11 @@ function Rencontres({ moi }) {
         <button className="fdh-rond pass" onClick={() => agir(false)}>✕</button>
         <button className="fdh-rond like" onClick={() => agir(true)}>❤</button>
       </div>
+      {dernier && (
+        <button className="fdh-annuler" onClick={annuler}>
+          {dernier.aime ? '❤ Aimé' : '✕ Passé'} · <b>Annuler</b>
+        </button>
+      )}
       <p className="fdh-astuce-geste">Balaie pour voir plus tard · ❤ ou ✕ pour décider · {i + 1} / {profils.length}</p>
       {match && (
         <div className="fdh-match"><div className="fdh-match-box">
@@ -2815,7 +2840,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AV</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #AW</div>
           </div>
         </div>
       )}
@@ -3045,6 +3070,10 @@ function Style() {
         padding:.4rem .9rem;border-radius:10px;border:3px solid;background:rgba(255,255,255,.92)}
       .fdh-tag-geste.suiv{left:1rem;color:#4A1546;border-color:#4A1546}
       .fdh-tag-geste.prec{right:1rem;color:#4A1546;border-color:#4A1546}
+      .fdh-annuler{display:block;margin:.7rem auto 0;background:#fff;border:1.5px solid #E4D3D8;
+        border-radius:99px;padding:.5rem 1.1rem;font-size:.84rem;color:#7A6B74;cursor:pointer}
+      .fdh-annuler b{color:#D62A5E;font-weight:800}
+      .fdh-annuler:hover{border-color:#D62A5E}
       .fdh-astuce-geste{text-align:center;font-size:.78rem;color:#9b8b93;margin:.5rem 0 0}
       .fdh-swipe.like{transform:translateX(120%) rotate(12deg);opacity:0}
       .fdh-swipe.pass{transform:translateX(-120%) rotate(-12deg);opacity:0}
