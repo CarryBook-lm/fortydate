@@ -1852,8 +1852,14 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
       ? 'Supprimer ton annonce ?'
       : `Supprimer l'annonce de ${a.p?.prenom || 'ce membre'} ? Cette action est définitive.`
     if (!window.confirm(question)) return
-    const { error } = await supabase.from('annonces').delete().eq('id', a.id)
-    if (error) { setErr("Suppression refusée : " + error.message); return }
+    // .select() est indispensable : sans lui, un refus de la sécurité renvoie
+    // « succès, 0 ligne » et l'annonce reste affichée sans que personne soit prévenu.
+    const { data, error } = await supabase.from('annonces').delete().eq('id', a.id).select()
+    if (error) { setErr('Suppression refusée : ' + error.message); return }
+    if (!data || data.length === 0) {
+      setErr("Suppression refusée : tu n'as pas les droits sur cette annonce.")
+      return
+    }
     await charger()
   }
 
@@ -2840,7 +2846,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #AW</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #AX</div>
           </div>
         </div>
       )}
