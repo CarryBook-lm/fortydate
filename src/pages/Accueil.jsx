@@ -146,21 +146,21 @@ function estAbonneP(p) {
 
 // Badges à afficher à côté du prénom
 // ✓ bleu = identité vérifiée (confiance) ; ⭐ or = membre VIP (statut)
-function BadgeVerifie({ p, size = 18 }) {
+function BadgeVerifie({ p, size = 20 }) {
   if (!p?.verifie) return null
   return (
-    <svg className="fdh-badge" width={size} height={size} viewBox="0 0 24 24" aria-label="Profil vérifié"
+    <svg className="fdh-badge-profil" width={size} height={size} viewBox="0 0 24 24" aria-label="Profil vérifié"
       style={{ verticalAlign: 'middle', marginLeft: 4, flexShrink: 0, minWidth: size, display: 'inline-block' }}>
       <path fill="#1D9BF0" d="M12 1.5l2.3 1.7 2.85-.15 1 2.68 2.5 1.37-.62 2.79 1.72 2.28-1.72 2.28.62 2.79-2.5 1.37-1 2.68-2.85-.15L12 22.5l-2.3-1.7-2.85.15-1-2.68-2.5-1.37.62-2.79L2.25 12l1.72-2.28-.62-2.79 2.5-1.37 1-2.68 2.85.15L12 1.5z"/>
-      <path fill="#fff" d="M10.6 15.2l-3-3 1.4-1.4 1.6 1.6 3.9-3.9 1.4 1.4-5.3 5.3z"/>
+      <path fill="none" stroke="#fff" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" d="M8 12.2l2.7 2.7L16 9.5"/>
     </svg>
   )
 }
 
-function BadgeVip({ p, size = 18 }) {
+function BadgeVip({ p, size = 20 }) {
   if (!estAbonneP(p)) return null
   return (
-    <svg className="fdh-badge" width={size} height={size} viewBox="0 0 24 24" aria-label="Membre VIP"
+    <svg className="fdh-badge-profil" width={size} height={size} viewBox="0 0 24 24" aria-label="Membre VIP"
       style={{ verticalAlign: 'middle', marginLeft: 4, flexShrink: 0, minWidth: size, display: 'inline-block' }}>
       <path fill="#C69A4E" d="M12 2.1l2.7 5.6 6.1.9-4.4 4.3 1.05 6.1L12 16.1l-5.45 2.9L7.6 12.9 3.2 8.6l6.1-.9L12 2.1z"/>
     </svg>
@@ -168,7 +168,7 @@ function BadgeVip({ p, size = 18 }) {
 }
 
 // Les deux badges, vérifié en premier (la confiance prime sur le statut)
-function Badge({ p, size = 18 }) {
+function Badge({ p, size = 20 }) {
   return <><BadgeVerifie p={p} size={size} /><BadgeVip p={p} size={size} /></>
 }
 
@@ -363,8 +363,8 @@ function FicheProfil({ profil, moi, onFermer }) {
           <p className="fdh-fiche-presence"><Presence p={profil} avecTexte /></p>
           {(profil.verifie || estAbonneP(profil)) && (
             <div className="fdh-etiquettes">
-              {profil.verifie && <span className="fdh-etiq verif"><BadgeVerifie p={profil} size={15} /> Profil vérifié</span>}
-              {estAbonneP(profil) && <span className="fdh-etiq vip"><BadgeVip p={profil} size={15} /> Membre VIP</span>}
+              {profil.verifie && <span className="fdh-etiq verif"><BadgeVerifie p={profil} size={18} /> Profil vérifié</span>}
+              {estAbonneP(profil) && <span className="fdh-etiq vip"><BadgeVip p={profil} size={18} /> Membre VIP</span>}
             </div>
           )}
           {profil.bio && <p className="fdh-fiche-bio">« {profil.bio} »</p>}
@@ -796,7 +796,7 @@ function Jaime({ moi, onVoir, onDiscuter, onFaireAbo }) {
         {estNouveau(p) && <span className="fdh-neuf">NEW</span>}
         {floute && <span className="fdh-floute"><span className="fdh-floute-ic">🔒</span></span>}
       </button>
-      <div className="fdh-nom">{floute ? '••••••' : <><Presence p={p} />{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></>}</div>
+      <div className="fdh-nom">{floute ? '••••••' : <><Presence p={p} />{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={18} /></>}</div>
       <div className="fdh-2btn">
         {floute
           ? <button className="b-disc" onClick={() => onFaireAbo && onFaireAbo()}>Découvrir</button>
@@ -1453,7 +1453,7 @@ function Messages({ moi, ouvrir, setOuvrir, onLu, onFaireAbo, onVoir }) {
             title={`Voir le profil de ${p.prenom}`}>
             <Avatar url={p.photo_principale} prenom={p.prenom} taille="52px" />
           </span>
-          <div className="fdh-conv-txt"><div className="fdh-conv-nom">{p.prenom}<Badge p={p} size={16} /></div>
+          <div className="fdh-conv-txt"><div className="fdh-conv-nom">{p.prenom}<Badge p={p} size={18} /></div>
             <div className={'fdh-conv-apercu' + (nonLus[p.id] ? ' fort' : '')}>
               {nonLus[p.id] ? `${nonLus[p.id]} nouveau${nonLus[p.id] > 1 ? 'x' : ''} message${nonLus[p.id] > 1 ? 's' : ''}` : 'Appuie pour discuter'}</div></div>
           {nonLus[p.id] > 0 && <span className="fdh-conv-badge">{nonLus[p.id] > 9 ? '9+' : nonLus[p.id]}</span>}
@@ -1531,7 +1531,7 @@ function Visites({ moi, onVoir, onFaireAbo, onDiscuter }) {
         {liste.map(p => (
           <div key={p.id} className="fdh-carte fdh-carte-b">
             <button className="fdh-carte-photo" onClick={() => onVoir(p.id)}><Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" /></button>
-            <div className="fdh-nom"><Presence p={p} />{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></div>
+            <div className="fdh-nom"><Presence p={p} />{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={18} /></div>
             <div className="fdh-2btn">
               <button className="b-profil" onClick={() => onVoir(p.id)}>Profil</button>
               <button className="b-coeur" disabled={aimeEnCours === p.id || !!aimes[p.id]}
@@ -1932,7 +1932,7 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
                   </button>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="fdh-annonce-nom">
-                      {moi_meme ? 'Ton annonce' : <>{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={15} /></>}
+                      {moi_meme ? 'Ton annonce' : <>{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={18} /></>}
                     </div>
                     <div className="fdh-annonce-lieu">
                       📍 {p.ville ? p.ville + ' · ' : ''}{NOM_PAYS[p.pays_residence] || p.pays_residence}
@@ -2854,7 +2854,7 @@ export default function Accueil({ onDeconnexion }) {
             <Avatar url={bandeMsg.p.photo_principale} prenom={bandeMsg.p.prenom} taille="100%" />
           </span>
           <span className="fdh-bande-txt">
-            <span className="fdh-bande-nom">{bandeMsg.p.prenom}<Badge p={bandeMsg.p} size={14} /></span>
+            <span className="fdh-bande-nom">{bandeMsg.p.prenom}<Badge p={bandeMsg.p} size={17} /></span>
             <span className="fdh-bande-msg">{bandeMsg.contenu}</span>
           </span>
           <span className="fdh-bande-x" onClick={e => { e.stopPropagation(); setBandeMsg(null) }}>✕</span>
@@ -2886,7 +2886,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #BE</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #BF</div>
           </div>
         </div>
       )}
@@ -2965,8 +2965,8 @@ function Style() {
       .fdh-logo{font-weight:800;font-size:1.2rem}
       .fdh-logo .f{color:#4A1546}.fdh-logo .d{color:#D62A5E}
       .fdh-logo-img{height:48px;width:auto;max-width:58%;display:block;object-fit:contain;flex:0 1 auto;min-width:0}
-      .fdh-annonce-btn{background:none;border:0;font-size:1.2rem;cursor:pointer;line-height:1;padding:0;flex:0 0 auto;margin-left:.7rem}
-      .fdh-annonce-btn{position:relative}
+      .fdh-annonce-btn{position:relative;background:none;border:0;font-size:1.2rem;cursor:pointer;
+        line-height:1;padding:0;flex:0 0 auto;margin-left:.7rem}
       .fdh-pastille-or{position:absolute;top:-6px;right:-8px;min-width:17px;height:17px;padding:0 4px;
         border-radius:99px;background:#C69A4E;color:#fff;font-size:.62rem;font-weight:800;
         display:grid;place-items:center;line-height:1;box-shadow:0 0 0 2px #fff}
@@ -3410,7 +3410,8 @@ function Style() {
       .fdh-fiche-pied{flex:0 0 auto;background:#FBF4F5;border-top:1px solid #EEE0E4;
         padding:.6rem 1rem;padding-bottom:calc(.6rem + env(safe-area-inset-bottom))}
       .fdh-fiche-head{flex:0 0 auto;display:flex;align-items:center;gap:.5rem;padding:.7rem 1rem;padding-top:calc(.7rem + env(safe-area-inset-top));background:#fff;border-bottom:1px solid #EEE0E4}
-      .fdh-badge{flex:0 0 auto;aspect-ratio:1/1}
+      .fdh-badge-profil{flex:0 0 auto;aspect-ratio:1/1;
+        filter:drop-shadow(0 0 1px rgba(255,255,255,.95)) drop-shadow(0 0 1.5px rgba(255,255,255,.8))}
       .fdh-fiche-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
       .fdh-fiche-pied .fdh-fiche-aime{margin-top:0}
       .fdh-fiche-photo{width:100%;background:#EDE0E4}
@@ -3457,7 +3458,6 @@ function Style() {
       .fdh-modal-attente{text-align:center;padding:1.5rem .5rem}
       .fdh-modal-attente h3{color:#4A1546;margin:1rem 0 .6rem}
       .fdh-attente-msg{color:#3A0F38;font-size:1rem;min-height:2.6em;line-height:1.35}
-      .fdh-attente-note{color:#9a8b92;font-size:.82rem;margin-top:.6rem}
       .fdh-spinner{width:52px;height:52px;border-radius:50%;margin:0 auto;border:5px solid #F3E7EA;border-top-color:#D62A5E;animation:fdspin 1s linear infinite}
       @keyframes fdspin{to{transform:rotate(360deg)}}
 
