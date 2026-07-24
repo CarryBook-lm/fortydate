@@ -1111,7 +1111,6 @@ function EditerProfil({ moi, onFerme, onMaj }) {
         </div>
 
         {msg && <div className="fdh-abo-msg err">{msg}</div>}
-      <Flash texte={flash} onFin={() => setFlash('')} />
         <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }} disabled={envoi} onClick={enregistrer}>
           {envoi ? 'Enregistrement…' : '✅ Enregistrer'}
         </button>
@@ -2207,6 +2206,7 @@ function Admin({ onVoir }) {
         </button>
       </div>
       {msg && <div className="fdh-abo-msg err">{msg}</div>}
+      <Flash texte={flash} onFin={() => setFlash('')} />
 
       {vue === 'bord' && (
         <div>
@@ -2886,7 +2886,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #BD</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #BE</div>
           </div>
         </div>
       )}
