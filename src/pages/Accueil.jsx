@@ -1222,10 +1222,10 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
   const [emoOuvert, setEmoOuvert] = useState(false)
   const [envoyesJour, setEnvoyesJour] = useState(null) // messages envoyés aujourd'hui
   const bas = useRef(null)
-  const [frappe, setFrappe] = useState(false)      // le contact est en train d'écrire
-  const canalFrappe = useRef(null)
+  const [ecrit, setEcrit] = useState(false)        // le contact est en train d'écrire
+  const canalSaisie = useRef(null)
   const dernierSignal = useRef(0)
-  const minuteurFrappe = useRef(null)
+  const minuteurSaisie = useRef(null)
   const abonne = estAbonne(moi)
   const restants = abonne ? Infinity : Math.max(0, LIMITE_MSG_JOUR - (envoyesJour ?? 0))
 
@@ -1260,7 +1260,7 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
     const canal = supabase.channel('chat-' + contact.id)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `expediteur=eq.${contact.id}` },
         payload => { if (payload.new.destinataire === moi.id) {
-          setFrappe(false)
+          setEcrit(false)
           setMsgs(m => [...m, payload.new])
           supabase.from('messages').update({ lu: true }).eq('id', payload.new.id).then(() => onLu && onLu())
         } })
@@ -1268,27 +1268,38 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
     return () => { annule = true; supabase.removeChannel(canal) }
   }, [moi.id, contact.id])
 
-  // Indicateur « en train d'écrire » : messages éphémères, rien n'est stocké en base.
+  // « En train d'écrire… » : diffusion éphémère, rien n'est stocké en base.
+  // Le nom du salon est TRIÉ pour que les deux personnes soient sur le même canal.
   useEffect(() => {
-    const salon = 'frappe-' + [moi.id, contact.id].sort().join('-')
+    const salon = 'saisie-' + [moi.id, contact.id].sort().join('-')
     const c = supabase.channel(salon, { config: { broadcast: { self: false } } })
-      .on('broadcast', { event: 'frappe' }, ({ payload }) => {
+      .on('broadcast', { event: 'ecrit' }, ({ payload }) => {
         if (!payload || payload.de === moi.id) return
-        setFrappe(true)
-        clearTimeout(minuteurFrappe.current)
-        minuteurFrappe.current = setTimeout(() => setFrappe(false), 3000)
+        setEcrit(true)
+        clearTimeout(minuteurSaisie.current)
+        minuteurSaisie.current = setTimeout(() => setEcrit(false), 3000)
+      })
+      .on('broadcast', { event: 'arrete' }, ({ payload }) => {
+        if (!payload || payload.de === moi.id) return
+        clearTimeout(minuteurSaisie.current)
+        setEcrit(false)
       })
       .subscribe()
-    canalFrappe.current = c
-    return () => { clearTimeout(minuteurFrappe.current); supabase.removeChannel(c) }
+    canalSaisie.current = c
+    return () => { clearTimeout(minuteurSaisie.current); supabase.removeChannel(c) }
   }, [moi.id, contact.id])
 
-  // Prévient l'autre qu'on écrit, au maximum une fois toutes les 1,5 s
-  function signalerFrappe() {
+  function diffuser(evenement) {
+    try { canalSaisie.current?.send({ type: 'broadcast', event: evenement, payload: { de: moi.id } }) } catch (_) {}
+  }
+
+  // Prévient l'autre qu'on écrit, au maximum une fois toutes les 2 s
+  function signalerSaisie(valeur) {
+    if (!valeur.trim()) { dernierSignal.current = 0; diffuser('arrete'); return }
     const t = Date.now()
-    if (t - dernierSignal.current < 1500) return
+    if (t - dernierSignal.current < 2000) return
     dernierSignal.current = t
-    try { canalFrappe.current?.send({ type: 'broadcast', event: 'frappe', payload: { de: moi.id } }) } catch (_) {}
+    diffuser('ecrit')
   }
 
   useEffect(() => { bas.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs])
@@ -1297,6 +1308,7 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
     const t = texte.trim(); if (!t || envoi) return
     if (!abonne && restants <= 0) return
     setEnvoi(true); setEmoOuvert(false)
+    dernierSignal.current = 0; diffuser('arrete')
     const { data, error } = await supabase.from('messages')
       .insert({ expediteur: moi.id, destinataire: contact.id, contenu: t, repond_a: repondA?.id || null })
       .select().single()
@@ -1313,14 +1325,15 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
         <button className="fdh-retour" onClick={onRetour}>‹</button>
         <Avatar url={contact.photo_principale} prenom={contact.prenom} taille="38px" />
         <span className="fdh-chat-nom">{contact.prenom}<Badge p={contact} />
-          {frappe
-            ? <span className="fdh-frappe">en train d'écrire<i></i><i></i><i></i></span>
+          {ecrit
+            ? <span className="fdh-ecrit-txt">en train d'écrire…</span>
             : <Presence p={contact} avecTexte />}</span>
       </div>
 
       <div className="fdh-chat-fil">
         {msgs.length === 0 && <p className="fdh-chat-vide">Dis bonjour à {contact.prenom} 👋</p>}
         {msgs.map(m => <Bulle key={m.id} m={m} moi={moi} msgs={msgs} onRepondre={setRepondA} />)}
+        {ecrit && <div className="fdh-saisie-bulle"><i></i><i></i><i></i></div>}
         <div ref={bas} />
       </div>
 
@@ -1349,7 +1362,7 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
         <button className="fdh-emo-btn" onClick={() => setEmoOuvert(v => !v)} aria-label="Emojis">😊</button>
         <input value={texte} placeholder={!abonne && restants <= 0 ? 'Limite du jour atteinte' : 'Écris un message…'}
           disabled={!abonne && restants <= 0}
-          onChange={e => { setTexte(e.target.value); signalerFrappe() }}
+          onChange={e => { setTexte(e.target.value); signalerSaisie(e.target.value) }}
           onKeyDown={e => e.key === 'Enter' && envoyer()} onFocus={() => setEmoOuvert(false)} />
         <button className="fdh-envoi" onClick={envoyer} disabled={envoi || (!abonne && restants <= 0)}>➤</button>
       </div>
@@ -2584,6 +2597,12 @@ export default function Accueil({ onDeconnexion }) {
   const [estAdmin, setEstAdmin] = useState(false)
   const [mesReponses, setMesReponses] = useState(null) // réponses affinités
   const [conversationAvec, setConversationAvec] = useState(null)
+  const [bandeMsg, setBandeMsg] = useState(null)   // { p, contenu } — message entrant
+  const [hautBande, setHautBande] = useState(56)
+  // Le canal temps réel n'est construit qu'une fois : sans cette référence,
+  // il comparerait toujours la conversation ouverte au premier rendu.
+  const convRef = useRef(null)
+  const ongletRef = useRef('proximite')
   const [overlay, setOverlay] = useState(null)  // 'profil' | 'questionnaire' | null
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [modalMdp, setModalMdp] = useState(false)
@@ -2610,6 +2629,23 @@ export default function Accueil({ onDeconnexion }) {
   }
   const ouvrirDiscussion = (p) => { setConversationAvec(p); setOnglet('messages') }
 
+  useEffect(() => { convRef.current = conversationAvec }, [conversationAvec])
+  useEffect(() => { ongletRef.current = onglet }, [onglet])
+
+  // La bande s'efface toute seule après 6 secondes
+  useEffect(() => {
+    if (!bandeMsg) return
+    const t = setTimeout(() => setBandeMsg(null), 6000)
+    return () => clearTimeout(t)
+  }, [bandeMsg])
+
+  // Elle se place juste sous l'en-tête, dont la hauteur varie selon l'appareil
+  useEffect(() => {
+    if (!bandeMsg) return
+    const tete = document.querySelector('.fdh-header')
+    if (tete) setHautBande(Math.round(tete.getBoundingClientRect().height))
+  }, [bandeMsg])
+
   // ---- Badges de notification (messages non lus + nouveaux j'aime) ----
   async function rafraichirBadges() {
     if (!moi?.id) return
@@ -2632,7 +2668,17 @@ export default function Accueil({ onDeconnexion }) {
     rafraichirBadges()
     const canal = supabase.channel('badges-' + moi.id)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `destinataire=eq.${moi.id}` },
-        () => setNbMsgNonLus(n => n + 1))
+        async payload => {
+          setNbMsgNonLus(n => n + 1)
+          const m = payload.new
+          // Pas de bande si la conversation concernée est déjà ouverte à l'écran
+          const dedans = ongletRef.current === 'messages' && convRef.current?.id === m.expediteur
+          if (dedans) return
+          const { data: p } = await supabase.from('profiles')
+            .select('id, prenom, date_naissance, photo_principale, verifie, abo_statut, abo_expire_at')
+            .eq('id', m.expediteur).single()
+          if (p) setBandeMsg({ p, contenu: m.contenu || '' })
+        })
       .subscribe()
     return () => { supabase.removeChannel(canal) }
   }, [moi?.id]) // eslint-disable-line
@@ -2730,6 +2776,20 @@ export default function Accueil({ onDeconnexion }) {
         <span className="fdh-titre-page">{overlay ? titreOverlay[overlay] : titres[onglet]}</span>
       </header>
 
+      {bandeMsg && (
+        <button className="fdh-bande" style={{ top: hautBande }}
+          onClick={() => { const q = bandeMsg.p; setBandeMsg(null); ouvrirDiscussion(q) }}>
+          <span className="fdh-bande-av">
+            <Avatar url={bandeMsg.p.photo_principale} prenom={bandeMsg.p.prenom} taille="100%" />
+          </span>
+          <span className="fdh-bande-txt">
+            <span className="fdh-bande-nom">{bandeMsg.p.prenom}<Badge p={bandeMsg.p} size={14} /></span>
+            <span className="fdh-bande-msg">{bandeMsg.contenu}</span>
+          </span>
+          <span className="fdh-bande-x" onClick={e => { e.stopPropagation(); setBandeMsg(null) }}>✕</span>
+        </button>
+      )}
+
       {menuOuvert && (
         <div className="fdh-drawer-fond" onClick={() => setMenuOuvert(false)}>
           <div className="fdh-drawer" onClick={e => e.stopPropagation()}>
@@ -2755,7 +2815,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AU</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AV</div>
           </div>
         </div>
       )}
@@ -3207,12 +3267,29 @@ function Style() {
       .fdh-chat-head .fdh-photo{width:38px;height:38px;border-radius:50%;object-fit:cover}
       .fdh-chat-head .fdh-vide{width:38px;height:38px;border-radius:50%;font-size:1.1rem}
       .fdh-retour{background:none;border:0;font-size:1.8rem;color:#D62A5E;cursor:pointer;line-height:1;padding:0 .3rem 0 0}
-      .fdh-frappe{display:block;font-size:.72rem;color:#D62A5E;font-weight:700;font-style:italic}
-      .fdh-frappe i{display:inline-block;width:3px;height:3px;border-radius:50%;background:#D62A5E;
-        margin-left:2px;vertical-align:middle;animation:fdhPoint 1.2s infinite}
-      .fdh-frappe i:nth-child(2){animation-delay:.2s}
-      .fdh-frappe i:nth-child(3){animation-delay:.4s}
-      @keyframes fdhPoint{0%,60%,100%{opacity:.25}30%{opacity:1}}
+      /* « En train d'écrire… » */
+      .fdh-ecrit-txt{display:block;font-size:.72rem;color:#D62A5E;font-weight:700;font-style:italic}
+      .fdh-saisie-bulle{align-self:flex-start;background:#fff;border:1px solid #EEE0E4;border-radius:16px;
+        padding:.6rem .8rem;display:flex;gap:4px;align-items:center;margin:.1rem 0}
+      .fdh-saisie-bulle i{width:6px;height:6px;border-radius:50%;background:#D62A5E;
+        display:inline-block;animation:fdhRebond 1.3s infinite}
+      .fdh-saisie-bulle i:nth-child(2){animation-delay:.18s}
+      .fdh-saisie-bulle i:nth-child(3){animation-delay:.36s}
+      @keyframes fdhRebond{0%,70%,100%{transform:translateY(0);opacity:.35}35%{transform:translateY(-5px);opacity:1}}
+
+      /* Bande de message entrant */
+      .fdh-bande{position:fixed;left:50%;transform:translateX(-50%);z-index:55;
+        width:calc(100% - 1.4rem);max-width:466px;background:linear-gradient(135deg,#4A1546,#7A1E52);
+        color:#fff;border:0;border-radius:14px;padding:.7rem .8rem;cursor:pointer;text-align:left;
+        display:flex;align-items:center;gap:.65rem;box-shadow:0 12px 28px -12px rgba(36,10,42,.75);
+        animation:fdhGlisse .28s ease-out}
+      @keyframes fdhGlisse{from{opacity:0;transform:translate(-50%,-14px)}to{opacity:1;transform:translate(-50%,0)}}
+      .fdh-bande-av{flex:0 0 40px;width:40px;height:40px;border-radius:50%;overflow:hidden;position:relative;background:#EDE0E4}
+      .fdh-bande-av .fdh-photo,.fdh-bande-av .fdh-vide{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;font-size:1rem}
+      .fdh-bande-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:.1rem}
+      .fdh-bande-nom{font-weight:800;font-size:.88rem;display:flex;align-items:center}
+      .fdh-bande-msg{font-size:.8rem;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .fdh-bande-x{flex:0 0 auto;opacity:.6;font-size:.9rem;padding:0 .2rem}
       .fdh-chat-nom{font-weight:800;color:#3A0F38}
       .fdh-chat-fil{flex:1;min-height:0;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.4rem;-webkit-overflow-scrolling:touch}
       .fdh-chat-vide{text-align:center;color:#9a8b92;margin-top:1.5rem}
