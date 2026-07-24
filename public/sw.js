@@ -27,6 +27,12 @@ self.addEventListener('push', (e) => {
     badge: data.badge || '/icon-192.png',
     tag: data.tag,
     renotify: true,
+    // Vibration + son : c'est ce qui pousse Android à afficher la bannière
+    // en haut de l'écran au lieu de la ranger silencieusement dans le tiroir.
+    vibrate: [200, 100, 200],
+    silent: false,
+    requireInteraction: false,
+    timestamp: Date.now(),
     data: { url: data.url || '/' }
   }
   e.waitUntil(self.registration.showNotification(title, options))
