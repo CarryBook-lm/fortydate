@@ -2505,7 +2505,7 @@ function Verification({ moi, onClose }) {
             <h2>Selfie bien reçu</h2>
             <p>Notre équipe l'examine. Le badge ✓ apparaîtra sur ton profil dès la validation.</p>
             <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '.8rem' }}
-              onClick={() => setEtat('vide')}>Envoyer un autre selfie</button>
+              onClick={onClose}>Terminé</button>
           </div>
         )}
 
@@ -2836,7 +2836,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #AY</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #AZ</div>
           </div>
         </div>
       )}
