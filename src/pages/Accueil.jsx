@@ -696,6 +696,11 @@ function Jaime({ moi, onVoir, onDiscuter, onFaireAbo }) {
   const [plein, setPlein] = useState(null) // null | 'recus' | 'matchs'
   const [aimeEnCours, setAimeEnCours] = useState(null)
   const [nouveauMatch, setNouveauMatch] = useState(null)
+  // Date de la dernière visite : lue une seule fois, pour marquer les nouveautés de CETTE visite
+  const [vuAt] = useState(() => {
+    try { return localStorage.getItem('fd_jaime_vu_at') || '' } catch (_) { return '' }
+  })
+  const estNouveau = (p) => !!p?.quand && (!vuAt || p.quand > vuAt)
 
   // Aimer en retour quelqu'un qui nous a déjà aimé(e) => c'est forcément un match
   async function aimerEnRetour(p) {
@@ -716,10 +721,25 @@ function Jaime({ moi, onVoir, onDiscuter, onFaireAbo }) {
     let annule = false
     ;(async () => {
       try {
-        const [m, r] = await Promise.all([supabase.rpc('mes_matchs'), supabase.rpc('qui_m_a_aime')])
+        const [m, r, d] = await Promise.all([
+          supabase.rpc('mes_matchs'), supabase.rpc('qui_m_a_aime'), supabase.rpc('mes_jaime_dates')
+        ])
         if (m.error) throw m.error; if (r.error) throw r.error
-        const [mp, rp] = await Promise.all([ajouterPresence(m.data), ajouterPresence(r.data)])
-        if (!annule) { setMatchs(mp); setRecus(rp) }
+        const dates = {}
+        for (const x of (d.data || [])) {
+          if (!dates[x.autre_id] || x.quand > dates[x.autre_id]) dates[x.autre_id] = x.quand
+        }
+        const habiller = (liste) => (liste || [])
+          .map(x => ({ ...x, quand: dates[x.id] || null }))
+          .sort((a, b) => String(b.quand || '').localeCompare(String(a.quand || '')))
+        const [mp, rp] = await Promise.all([
+          ajouterPresence(habiller(m.data)), ajouterPresence(habiller(r.data))
+        ])
+        if (!annule) {
+          setMatchs(mp); setRecus(rp)
+          // On note la visite APRÈS l'affichage : les « Nouveau » restent visibles cette fois-ci
+          try { localStorage.setItem('fd_jaime_vu_at', new Date().toISOString()) } catch (_) {}
+        }
       } catch (e) { if (!annule) setErr(e.message || 'Erreur.') }
     })()
     return () => { annule = true }
@@ -734,6 +754,7 @@ function Jaime({ moi, onVoir, onDiscuter, onFaireAbo }) {
     <div key={p.id} className="fdh-carte fdh-carte-b">
       <button className="fdh-carte-photo" onClick={() => floute ? onFaireAbo && onFaireAbo() : onVoir(p.id)}>
         <Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" />
+        {estNouveau(p) && <span className="fdh-neuf">NEW</span>}
         {floute && <span className="fdh-floute"><span className="fdh-floute-ic">🔒</span></span>}
       </button>
       <div className="fdh-nom">{floute ? '••••••' : <><Presence p={p} />{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={16} /></>}</div>
@@ -2704,7 +2725,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AS</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AT</div>
           </div>
         </div>
       )}
@@ -3018,6 +3039,9 @@ function Style() {
       .fdh-contact-mail{background:#F7EDF0;border:1.5px solid #E4D3D8;border-radius:14px;padding:.9rem;text-align:center;margin-bottom:.4rem}
       .fdh-contact-lbl{font-size:.75rem;color:#7A6B74;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
       .fdh-contact-adr{display:block;margin-top:.3rem;font-size:1rem;font-weight:800;color:#4A1546;word-break:break-all;text-decoration:none}
+      .fdh-neuf{position:absolute;top:.4rem;left:.4rem;z-index:4;background:#D62A5E;color:#fff;
+        font-size:.62rem;font-weight:900;letter-spacing:.06em;padding:.2rem .4rem;border-radius:6px;
+        box-shadow:0 2px 6px rgba(0,0,0,.25)}
       .fdh-floute{position:absolute;inset:0;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
         background:rgba(74,21,70,.35);display:grid;place-items:center}
       .fdh-floute-ic{font-size:1.6rem}
