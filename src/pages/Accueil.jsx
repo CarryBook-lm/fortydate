@@ -218,6 +218,17 @@ async function envoyerSelfieVerif(file, userId) {
   return chemin
 }
 
+// Message de réussite : s'affiche en bas de l'écran et s'efface après 3 s
+function Flash({ texte, onFin }) {
+  useEffect(() => {
+    if (!texte) return
+    const t = setTimeout(onFin, 3000)
+    return () => clearTimeout(t)
+  }, [texte]) // eslint-disable-line
+  if (!texte) return null
+  return <div className="fdh-flash">✓ {texte}</div>
+}
+
 // ---- Statut de présence, calculé depuis profiles.derniere_activite ----
 function presence(d) {
   if (!d) return null
@@ -581,6 +592,7 @@ function Rencontres({ moi }) {
   const [anim, setAnim] = useState('')
   const [drag, setDrag] = useState(0)
   const [dernier, setDernier] = useState(null)   // { profil, aime } — pour pouvoir annuler
+  const [flash, setFlash] = useState('')
   const depart = useRef(null)
 
   // --- Balayage : feuillette seulement. Le profil revient plus tard tant qu'on n'a pas
@@ -649,7 +661,11 @@ function Rencontres({ moi }) {
 
   async function annuler() {
     if (!dernier) return
-    const { profil } = dernier
+    const { profil, aime } = dernier
+    const question = aime
+      ? `Annuler ton j'aime pour ${profil.prenom} ?`
+      : `Revoir ${profil.prenom} ?`
+    if (!window.confirm(question)) return
     setDernier(null)
     const { error } = await supabase.from('likes').delete()
       .eq('auteur_id', moi.id).eq('cible_id', profil.id).select()
@@ -657,6 +673,7 @@ function Rencontres({ moi }) {
     setMatch(null)
     setProfils(l => (l || []).some(x => x.id === profil.id) ? l : [profil, ...(l || [])])
     setI(0)
+    setFlash(aime ? "J'aime annulé" : `${profil.prenom} est de retour`)
   }
 
   if (err) return <div className="fdh-msg">{err}</div>
@@ -702,6 +719,7 @@ function Rencontres({ moi }) {
         </button>
       )}
       <p className="fdh-astuce-geste">Balaie pour voir plus tard · ❤ ou ✕ pour décider · {i + 1} / {profils.length}</p>
+      <Flash texte={flash} onFin={() => setFlash('')} />
       {match && (
         <div className="fdh-match"><div className="fdh-match-box">
           <div className="fdh-match-emoji">🎉</div><h2>C'est un match !</h2>
@@ -1093,6 +1111,7 @@ function EditerProfil({ moi, onFerme, onMaj }) {
         </div>
 
         {msg && <div className="fdh-abo-msg err">{msg}</div>}
+      <Flash texte={flash} onFin={() => setFlash('')} />
         <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }} disabled={envoi} onClick={enregistrer}>
           {envoi ? 'Enregistrement…' : '✅ Enregistrer'}
         </button>
@@ -1788,6 +1807,7 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
   const [edition, setEdition] = useState(false)
   const [texte, setTexte] = useState('')
   const [envoi, setEnvoi] = useState(false)
+  const [flash, setFlash] = useState('')
 
   const mienne = (liste || []).find(a => a.auteur_id === moi.id) || null
 
@@ -1857,6 +1877,7 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
       return
     }
     await charger()
+    setFlash(sienne ? 'Ton annonce a été supprimée' : `L'annonce de ${a.p?.prenom || 'ce membre'} a été supprimée`)
   }
 
   if (liste === null) return <div className="fdh-msg">Chargement…</div>
@@ -1890,6 +1911,7 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
       )}
 
       {!edition && err && <div className="fdh-abo-msg err">{err}</div>}
+      <Flash texte={flash} onFin={() => setFlash('')} />
 
       {liste.length === 0
         ? <div className="fdh-vide-etat"><div className="fdh-vide-emoji">📢</div>
@@ -1964,6 +1986,7 @@ function Admin({ onVoir }) {
   const [actions, setActions] = useState(null)
   const [chargeAct, setChargeAct] = useState(false)
   const [errAct, setErrAct] = useState('')
+  const [flash, setFlash] = useState('')
 
   // Bornes de la période choisie (début inclus, fin exclue)
   function bornes(p) {
@@ -2055,11 +2078,17 @@ function Admin({ onVoir }) {
     return () => { annule = true }
   }, [vue])
 
-  async function validerProfil(id, ok) {
+  async function validerProfil(v, ok) {
     setMsg('')
-    const { error } = await supabase.rpc('valider_profil', { p_id: id, p_ok: ok })
+    const qui = v.prenom || 'ce membre'
+    const question = ok
+      ? `Valider le profil de ${qui} ? Le badge ✓ bleu apparaîtra à côté de son prénom.`
+      : `Refuser le selfie de ${qui} ? Sa photo sera supprimée et il devra en renvoyer une.`
+    if (!window.confirm(question)) return
+    const { error } = await supabase.rpc('valider_profil', { p_id: v.id, p_ok: ok })
     if (error) { setMsg("Validation refusée : vérifie l'email admin dans la fonction SQL."); return }
-    setAVerifier(l => (l || []).filter(x => x.id !== id))
+    setAVerifier(l => (l || []).filter(x => x.id !== v.id))
+    setFlash(ok ? `${qui} est maintenant vérifié` : `Le selfie de ${qui} a été refusé`)
   }
 
   // Ouvrir l'onglet Signalé marque les signalements comme vus (la pastille s'éteint)
@@ -2243,8 +2272,8 @@ function Admin({ onVoir }) {
                     {v.prenom}{ageDepuis(v.date_naissance) ? `, ${ageDepuis(v.date_naissance)}` : ''}
                   </div>
                   <div style={{ display: 'flex', gap: '.4rem' }}>
-                    <button className="fdh-adm-btn" onClick={() => validerProfil(v.id, false)}>Refuser</button>
-                    <button className="fdh-adm-btn ok" onClick={() => validerProfil(v.id, true)}>Valider ✓</button>
+                    <button className="fdh-adm-btn" onClick={() => validerProfil(v, false)}>Refuser</button>
+                    <button className="fdh-adm-btn ok" onClick={() => validerProfil(v, true)}>Valider ✓</button>
                   </div>
                 </div>
               </div>
@@ -2836,7 +2865,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #AZ</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #BA</div>
           </div>
         </div>
       )}
@@ -3066,6 +3095,12 @@ function Style() {
         padding:.4rem .9rem;border-radius:10px;border:3px solid;background:rgba(255,255,255,.92)}
       .fdh-tag-geste.suiv{left:1rem;color:#4A1546;border-color:#4A1546}
       .fdh-tag-geste.prec{right:1rem;color:#4A1546;border-color:#4A1546}
+      .fdh-flash{position:fixed;left:50%;transform:translateX(-50%);z-index:80;
+        bottom:calc(80px + env(safe-area-inset-bottom));background:#1a7f45;color:#fff;
+        font-size:.85rem;font-weight:800;padding:.65rem 1.1rem;border-radius:99px;
+        box-shadow:0 10px 24px -10px rgba(0,0,0,.55);animation:fdhFlash .25s ease-out;white-space:nowrap;
+        max-width:90vw;overflow:hidden;text-overflow:ellipsis}
+      @keyframes fdhFlash{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
       .fdh-annuler{display:block;margin:.7rem auto 0;background:#fff;border:1.5px solid #E4D3D8;
         border-radius:99px;padding:.5rem 1.1rem;font-size:.84rem;color:#7A6B74;cursor:pointer}
       .fdh-annuler b{color:#D62A5E;font-weight:800}
