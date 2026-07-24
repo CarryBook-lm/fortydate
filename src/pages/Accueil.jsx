@@ -1313,7 +1313,7 @@ function Messages({ moi, ouvrir, setOuvrir, onLu, onFaireAbo }) {
     if (!moi || ouvrir) return
     let annule = false
     ;(async () => {
-      const { data, error } = await supabase.rpc('mes_matchs')
+      const { data, error } = await supabase.rpc('mes_conversations')
       if (annule) return
       if (error) { setErr(error.message); return }
       setMatchs(data || [])
@@ -1338,7 +1338,7 @@ function Messages({ moi, ouvrir, setOuvrir, onLu, onFaireAbo }) {
   if (matchs.length === 0)
     return <div className="fdh-vide-etat"><div className="fdh-vide-emoji">💬</div>
       <p>Aucune conversation pour l'instant.</p>
-      <p className="fdh-vide-sous">Tes matchs apparaîtront ici. Fais un match pour discuter !</p></div>
+      <p className="fdh-vide-sous">Tes matchs et les personnes qui t'écrivent apparaîtront ici.</p></div>
   return (
     <div className="fdh-convs">
       {matchs.map(p => (
@@ -2704,7 +2704,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AR</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AS</div>
           </div>
         </div>
       )}
