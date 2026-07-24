@@ -17,14 +17,24 @@ function truncate(str, n) {
   return str.length > n ? str.slice(0, n - 1) + '\u2026' : str;
 }
 
-async function getPrenom(userId) {
+async function getProfil(userId) {
   if (!userId) return null;
   const { data } = await supabase
     .from('profiles')
-    .select('prenom')
+    .select('prenom, genre, abo_statut, abo_expire_at')
     .eq('id', userId)
     .single();
-  return (data && data.prenom) || null;
+  return data || null;
+}
+
+// L'accord suit le genre du DESTINATAIRE, pas celui de l'expéditeur.
+function accord(profil) {
+  return profil && profil.genre === 'femme' ? 'e' : '';
+}
+
+function estVip(profil) {
+  return !!(profil && profil.abo_statut === 'actif' &&
+    profil.abo_expire_at && new Date(profil.abo_expire_at) > new Date());
 }
 
 export default async function handler(req, res) {
@@ -65,9 +75,10 @@ export default async function handler(req, res) {
   if (table === 'messages') {
     recipientId = record.destinataire;
     senderId = record.expediteur;
-    const prenom = await getPrenom(senderId);
-    title = prenom ? prenom + " t'a envoye un message" : 'Nouveau message';
-    bodyText = truncate(record.contenu, 80) || 'Tu as recu un nouveau message';
+    const [envoyeur] = await Promise.all([getProfil(senderId)]);
+    const prenom = envoyeur && envoyeur.prenom;
+    title = prenom ? prenom + " t'a envoyé un message" : 'Nouveau message';
+    bodyText = truncate(record.contenu, 90) || 'Ouvre FortyDate pour le lire';
     url = '/';
     tag = 'msg-' + senderId;
   } else if (table === 'likes') {
@@ -77,9 +88,18 @@ export default async function handler(req, res) {
     }
     recipientId = record.cible_id;
     senderId = record.auteur_id;
-    const prenom = await getPrenom(senderId);
-    title = prenom ? prenom + " t'a aimee \u2764\uFE0F" : "Nouveau j'aime \u2764\uFE0F";
-    bodyText = "Tu as un nouveau j'aime sur FortyDate";
+    const [envoyeur, receveur] = await Promise.all([getProfil(senderId), getProfil(recipientId)]);
+    const e = accord(receveur);
+    if (estVip(receveur)) {
+      // Membre VIP : il a payé pour savoir qui l'aime, on donne le prénom.
+      const prenom = envoyeur && envoyeur.prenom;
+      title = prenom ? `${prenom} t'a aimé${e} \u2764\uFE0F` : `Nouveau j'aime \u2764\uFE0F`;
+      bodyText = 'Ouvre FortyDate pour lui répondre';
+    } else {
+      // Non abonné : le prénom reste caché, comme dans l'app.
+      title = `Quelqu'un t'a aimé${e} \u2764\uFE0F`;
+      bodyText = 'Ouvre FortyDate pour découvrir qui';
+    }
     url = '/';
     tag = 'like-' + senderId;
   } else {
