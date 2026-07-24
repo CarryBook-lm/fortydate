@@ -1222,6 +1222,10 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
   const [emoOuvert, setEmoOuvert] = useState(false)
   const [envoyesJour, setEnvoyesJour] = useState(null) // messages envoyés aujourd'hui
   const bas = useRef(null)
+  const [frappe, setFrappe] = useState(false)      // le contact est en train d'écrire
+  const canalFrappe = useRef(null)
+  const dernierSignal = useRef(0)
+  const minuteurFrappe = useRef(null)
   const abonne = estAbonne(moi)
   const restants = abonne ? Infinity : Math.max(0, LIMITE_MSG_JOUR - (envoyesJour ?? 0))
 
@@ -1256,12 +1260,36 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
     const canal = supabase.channel('chat-' + contact.id)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `expediteur=eq.${contact.id}` },
         payload => { if (payload.new.destinataire === moi.id) {
+          setFrappe(false)
           setMsgs(m => [...m, payload.new])
           supabase.from('messages').update({ lu: true }).eq('id', payload.new.id).then(() => onLu && onLu())
         } })
       .subscribe()
     return () => { annule = true; supabase.removeChannel(canal) }
   }, [moi.id, contact.id])
+
+  // Indicateur « en train d'écrire » : messages éphémères, rien n'est stocké en base.
+  useEffect(() => {
+    const salon = 'frappe-' + [moi.id, contact.id].sort().join('-')
+    const c = supabase.channel(salon, { config: { broadcast: { self: false } } })
+      .on('broadcast', { event: 'frappe' }, ({ payload }) => {
+        if (!payload || payload.de === moi.id) return
+        setFrappe(true)
+        clearTimeout(minuteurFrappe.current)
+        minuteurFrappe.current = setTimeout(() => setFrappe(false), 3000)
+      })
+      .subscribe()
+    canalFrappe.current = c
+    return () => { clearTimeout(minuteurFrappe.current); supabase.removeChannel(c) }
+  }, [moi.id, contact.id])
+
+  // Prévient l'autre qu'on écrit, au maximum une fois toutes les 1,5 s
+  function signalerFrappe() {
+    const t = Date.now()
+    if (t - dernierSignal.current < 1500) return
+    dernierSignal.current = t
+    try { canalFrappe.current?.send({ type: 'broadcast', event: 'frappe', payload: { de: moi.id } }) } catch (_) {}
+  }
 
   useEffect(() => { bas.current?.scrollIntoView({ behavior: 'smooth' }) }, [msgs])
 
@@ -1285,7 +1313,9 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
         <button className="fdh-retour" onClick={onRetour}>‹</button>
         <Avatar url={contact.photo_principale} prenom={contact.prenom} taille="38px" />
         <span className="fdh-chat-nom">{contact.prenom}<Badge p={contact} />
-          <Presence p={contact} avecTexte /></span>
+          {frappe
+            ? <span className="fdh-frappe">en train d'écrire<i></i><i></i><i></i></span>
+            : <Presence p={contact} avecTexte />}</span>
       </div>
 
       <div className="fdh-chat-fil">
@@ -1319,7 +1349,7 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo }) {
         <button className="fdh-emo-btn" onClick={() => setEmoOuvert(v => !v)} aria-label="Emojis">😊</button>
         <input value={texte} placeholder={!abonne && restants <= 0 ? 'Limite du jour atteinte' : 'Écris un message…'}
           disabled={!abonne && restants <= 0}
-          onChange={e => setTexte(e.target.value)}
+          onChange={e => { setTexte(e.target.value); signalerFrappe() }}
           onKeyDown={e => e.key === 'Enter' && envoyer()} onFocus={() => setEmoOuvert(false)} />
         <button className="fdh-envoi" onClick={envoyer} disabled={envoi || (!abonne && restants <= 0)}>➤</button>
       </div>
@@ -2725,7 +2755,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AT</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AU</div>
           </div>
         </div>
       )}
@@ -3177,6 +3207,12 @@ function Style() {
       .fdh-chat-head .fdh-photo{width:38px;height:38px;border-radius:50%;object-fit:cover}
       .fdh-chat-head .fdh-vide{width:38px;height:38px;border-radius:50%;font-size:1.1rem}
       .fdh-retour{background:none;border:0;font-size:1.8rem;color:#D62A5E;cursor:pointer;line-height:1;padding:0 .3rem 0 0}
+      .fdh-frappe{display:block;font-size:.72rem;color:#D62A5E;font-weight:700;font-style:italic}
+      .fdh-frappe i{display:inline-block;width:3px;height:3px;border-radius:50%;background:#D62A5E;
+        margin-left:2px;vertical-align:middle;animation:fdhPoint 1.2s infinite}
+      .fdh-frappe i:nth-child(2){animation-delay:.2s}
+      .fdh-frappe i:nth-child(3){animation-delay:.4s}
+      @keyframes fdhPoint{0%,60%,100%{opacity:.25}30%{opacity:1}}
       .fdh-chat-nom{font-weight:800;color:#3A0F38}
       .fdh-chat-fil{flex:1;min-height:0;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.4rem;-webkit-overflow-scrolling:touch}
       .fdh-chat-vide{text-align:center;color:#9a8b92;margin-top:1.5rem}
