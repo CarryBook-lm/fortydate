@@ -1697,7 +1697,7 @@ function MotDePasse({ onClose }) {
 
 /* ============================================================ */
 /* ---------------- Annonces (recherche de l'âme sœur) ---------------- */
-function Annonces({ moi, onVoir, onDiscuter }) {
+function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
   const [liste, setListe] = useState(null)
   const [err, setErr] = useState('')
   const [edition, setEdition] = useState(false)
@@ -1755,10 +1755,16 @@ function Annonces({ moi, onVoir, onDiscuter }) {
     } catch (e) { setErr(messageErreur(e.message)) } finally { setEnvoi(false) }
   }
 
-  async function supprimer() {
-    if (!mienne) return
-    if (!window.confirm('Supprimer ton annonce ?')) return
-    await supabase.from('annonces').delete().eq('id', mienne.id)
+  async function supprimer(cible) {
+    const a = cible || mienne
+    if (!a) return
+    const sienne = a.auteur_id === moi.id
+    const question = sienne
+      ? 'Supprimer ton annonce ?'
+      : `Supprimer l'annonce de ${a.p?.prenom || 'ce membre'} ? Cette action est définitive.`
+    if (!window.confirm(question)) return
+    const { error } = await supabase.from('annonces').delete().eq('id', a.id)
+    if (error) { setErr("Suppression refusée : " + error.message); return }
     await charger()
   }
 
@@ -1818,8 +1824,12 @@ function Annonces({ moi, onVoir, onDiscuter }) {
                   {moi_meme && (
                     <>
                       <button className="fdh-annonce-ic" onClick={() => { setTexte(a.contenu); setEdition(true) }} aria-label="Modifier">✏️</button>
-                      <button className="fdh-annonce-ic sup" onClick={supprimer} aria-label="Supprimer">🗑️</button>
+                      <button className="fdh-annonce-ic sup" onClick={() => supprimer(a)} aria-label="Supprimer">🗑️</button>
                     </>
+                  )}
+                  {!moi_meme && estAdmin && (
+                    <button className="fdh-annonce-ic moderer" onClick={() => supprimer(a)}
+                      aria-label="Supprimer cette annonce" title="Modération : supprimer cette annonce">🛡️</button>
                   )}
                 </div>
                 <p className="fdh-annonce-txt">{a.contenu}</p>
@@ -2616,7 +2626,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AP</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 23/07 · #AQ</div>
           </div>
         </div>
       )}
@@ -2625,7 +2635,7 @@ export default function Accueil({ onDeconnexion }) {
         {overlay === 'profil' && <MonProfil moi={moi} onDeconnexion={onDeconnexion} onMaj={setMoi} />}
         {overlay === 'questionnaire' && <Questionnaire moi={moi} reponsesInit={mesReponses}
           onFini={(r) => { setMesReponses(r); setOverlay(null); setOnglet('match') }} />}
-        {overlay === 'annonces' && <Annonces moi={moi} onVoir={voirProfil} onDiscuter={(p) => { setOverlay(null); ouvrirDiscussion(p) }} />}
+        {overlay === 'annonces' && <Annonces moi={moi} estAdmin={estAdmin} onVoir={voirProfil} onDiscuter={(p) => { setOverlay(null); ouvrirDiscussion(p) }} />}
         {overlay === 'abonnement' && <Abonnement moi={moi} onFini={rechargerProfil} onClose={() => setOverlay(null)} />}
         {!overlay && onglet === 'proximite' && <Proximite moi={moi} onVoir={voirProfil} />}
         {!overlay && onglet === 'rencontres' && <Rencontres moi={moi} />}
@@ -2714,6 +2724,7 @@ function Style() {
       .fdh-annonce-nom{font-weight:800;color:#3A0F38;font-size:.95rem}
       .fdh-annonce-lieu{font-size:.75rem;color:#7A6B74;margin:.1rem 0}
       .fdh-annonce-ic{background:none;border:0;font-size:1.05rem;cursor:pointer;padding:.1rem .2rem;line-height:1}
+      .fdh-annonce-ic.moderer{background:#FDEAEA;border-radius:8px;padding:.25rem .35rem}
       .fdh-annonce-txt{margin:.7rem 0 0;font-size:.92rem;color:#3A0F38;line-height:1.6;white-space:pre-wrap}
       .fdh-annonce-vues{margin-top:.8rem;text-align:center;font-size:.85rem;font-weight:800;color:#8a6a26;
         background:#FBF1DF;border-radius:12px;padding:.6rem}
