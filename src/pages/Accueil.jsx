@@ -6,7 +6,7 @@
 // ============================================================
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { uploadPhotoOptimisee } from '../lib/photo'
+import { uploadPhotoOptimisee, envoyerSelfieVerif, conseilPhoto } from '../lib/photo'
 import { subscribeToPush } from '../lib/push'
 
 /* ---------------- Questionnaire d'affinités (30 questions) ---------------- */
@@ -195,27 +195,6 @@ function sepIndicatif(tel) {
   const trouve = [...INDICATIFS].sort((a, b) => b.d.length - a.d.length).find(i => t.startsWith(i.d))
   if (trouve) return { indicatif: trouve.d, local: t.slice(trouve.d.length).replace(/\D/g, '') }
   return { indicatif: '+237', local: t.replace(/\D/g, '') }
-}
-
-// Envoi du selfie de vérification dans le bucket PRIVÉ « verifications ».
-// On enregistre seulement le CHEMIN du fichier (jamais une URL publique).
-async function envoyerSelfieVerif(file, userId) {
-  const image = await new Promise((ok, ko) => {
-    const r = new FileReader()
-    r.onload = () => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = r.result }
-    r.onerror = ko; r.readAsDataURL(file)
-  })
-  const max = 1000
-  const ech = Math.min(1, max / Math.max(image.width, image.height))
-  const c = document.createElement('canvas')
-  c.width = Math.round(image.width * ech); c.height = Math.round(image.height * ech)
-  c.getContext('2d').drawImage(image, 0, 0, c.width, c.height)
-  const blob = await new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.85))
-  const chemin = `${userId}/selfie-${Date.now()}.jpg`
-  const { error } = await supabase.storage.from('verifications')
-    .upload(chemin, blob, { contentType: 'image/jpeg', upsert: true })
-  if (error) throw error
-  return chemin
 }
 
 // Message de réussite : s'affiche en bas de l'écran et s'efface après 3 s
@@ -1140,7 +1119,7 @@ function MonProfil({ moi, onDeconnexion, onMaj }) {
       const { error: e2 } = await supabase.from('profiles').update(maj).eq('id', moi.id)
       if (e2) throw e2
       onMaj({ ...moi, ...maj })
-    } catch (e) { setMsg("Échec de l'envoi. Réessaie avec une autre image.") } finally { setEnvoi(false) }
+    } catch (e) { setMsg(conseilPhoto(e)) } finally { setEnvoi(false) }
   }
 
   async function definirPrincipale(url) {
@@ -2574,7 +2553,7 @@ function Verification({ moi, onClose }) {
       if (error) throw error
       setEtat('attente')
     } catch (e) {
-      setErr("Envoi impossible. Réessaie dans un instant.")
+      setErr(conseilPhoto(e))
     } finally { setEnvoi(false) }
   }
 
@@ -2929,7 +2908,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 26/07 · #BG</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 26/07 · #BH</div>
           </div>
         </div>
       )}

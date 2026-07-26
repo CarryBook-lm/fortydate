@@ -6,14 +6,15 @@
 //  Prérequis Supabase :
 //   • Authentication → Email → DÉSACTIVER "Confirm email"
 //     (sinon pas de session immédiate = insertion profil bloquée par RLS)
-//   • Storage → créer un bucket PUBLIC nommé "avatars" (pour les photos)
+//   • Storage → un bucket PUBLIC "avatars" (photos de profil)
+//     et un bucket PRIVÉ "verifications" (selfies de vérification)
 //
 //  Placement : src/pages/Inscription.jsx
 //  Import supabase depuis src/lib/supabase.js
 // ============================================================
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { uploadPhotoOptimisee } from '../lib/photo'
+import { uploadPhotoOptimisee, envoyerSelfieVerif, conseilPhoto } from '../lib/photo'
 
 // ---------- Données de référence ----------
 const PAYS = [
@@ -172,7 +173,9 @@ export default function Inscription({ onComplete }) {
       const url = await uploadPhotoOptimisee(file, user.id)
       set('photo_principale', url)
     } catch (e) {
-      setErr("Photo : crée d'abord un bucket public 'avatars' dans Supabase Storage.")
+      // Message DESTINÉ AU MEMBRE, pas au développeur : chaque code d'échec
+      // a son conseil, et le conseil qui marche est « envoie une capture d'écran ».
+      setErr(conseilPhoto(e))
     } finally {
       setLoading(false)
     }
@@ -183,12 +186,15 @@ export default function Inscription({ onComplete }) {
     setLoading(true); setErr('')
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      const url = await uploadPhotoOptimisee(file, user.id + '-verif')
-      const { error } = await supabase.from('profiles').update({ selfie_url: url }).eq('id', user.id)
+      // Bucket PRIVÉ « verifications », même fonction que le menu ☰.
+      // Avant : uploadPhotoOptimisee(file, user.id + '-verif') écrivait dans le
+      // bucket PUBLIC avatars, dans un dossier qui ne correspondait pas à auth.uid().
+      const chemin = await envoyerSelfieVerif(file, user.id)
+      const { error } = await supabase.from('profiles').update({ selfie_url: chemin }).eq('id', user.id)
       if (error) throw error
       set('selfie_envoye', true)
     } catch (e) {
-      setErr("Envoi impossible. Réessaie, ou passe cette étape.")
+      setErr(conseilPhoto(e) + ' Tu peux aussi passer cette étape et le faire plus tard.')
     } finally {
       setLoading(false)
     }

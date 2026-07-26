@@ -70,7 +70,7 @@ async function decoder(file) {
 
 // Dessine à la taille demandée et ré-encode en JPEG.
 // Renvoie null si la mémoire manque — c'est le signal pour réessayer plus petit.
-async function versJpeg(source, max) {
+async function versJpeg(source, max, qualite) {
   let w = source.width, h = source.height
   if (!w || !h) return null
   if (w > max || h > max) {
@@ -87,7 +87,7 @@ async function versJpeg(source, max) {
     canvas.width = 0; canvas.height = 0
     return null
   }
-  const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', QUALITE))
+  const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', qualite))
   // Libérer tout de suite : sans ça, le canvas du premier essai occupe
   // encore la mémoire pendant le second, et le second échoue aussi.
   canvas.width = 0; canvas.height = 0
@@ -95,7 +95,7 @@ async function versJpeg(source, max) {
 }
 
 // Décode puis compresse, en réduisant la cible tant que la mémoire manque.
-async function compresser(file) {
+async function compresser(file, tailles = TAILLES, qualite = QUALITE) {
   let source
   try {
     source = await decoder(file)
@@ -105,14 +105,14 @@ async function compresser(file) {
       : erreurPhoto('IMAGE_ILLISIBLE', 'fichier non décodable')
   }
   try {
-    for (const max of TAILLES) {
-      const blob = await versJpeg(source, max)
+    for (const max of tailles) {
+      const blob = await versJpeg(source, max, qualite)
       if (blob) return blob
     }
   } finally {
     if (typeof source.close === 'function') source.close() // ImageBitmap
   }
-  throw erreurPhoto('MEMOIRE', 'mémoire insuffisante même en 480 px')
+  throw erreurPhoto('MEMOIRE', 'mémoire insuffisante même à la plus petite taille')
 }
 
 // Empreinte SHA-256 du contenu -> nom de fichier unique par image.
@@ -145,4 +145,19 @@ export async function uploadPhotoOptimisee(file, userId) {
 
   const { data } = supabase.storage.from('avatars').getPublicUrl(nom)
   return data.publicUrl
+}
+
+// Envoi du selfie de vérification dans le bucket PRIVÉ « verifications ».
+// On enregistre seulement le CHEMIN du fichier, jamais une URL publique.
+//
+// ⚠️ Cette fonction vit ICI, et pas dans un écran : l'inscription et le menu ☰
+// doivent écrire au MÊME endroit. C'est en ayant deux copies divergentes que
+// l'inscription a fini par déposer les selfies dans le bucket public.
+export async function envoyerSelfieVerif(file, userId) {
+  const blob = await compresser(file, [1000, 720, 480], 0.85)
+  const chemin = `${userId}/selfie-${Date.now()}.jpg`
+  const { error } = await supabase.storage.from('verifications')
+    .upload(chemin, blob, { contentType: 'image/jpeg', upsert: true })
+  if (error) throw erreurPhoto('RESEAU', error.message || 'envoi refusé')
+  return chemin
 }
