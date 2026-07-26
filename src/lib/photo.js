@@ -41,6 +41,26 @@ export function conseilPhoto(err) {
   }
 }
 
+// ---------- Mesure ----------
+// Sans mesure, personne ne saura jamais si un correctif a servi.
+// On enregistre les échecs ET les réussites : un nombre d'échecs sans
+// dénominateur ne veut rien dire.
+
+function plateforme() {
+  const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || ''
+  if (/iPhone|iPad|iPod/i.test(ua)) return 'ios'
+  if (/Android/i.test(ua)) return 'android'
+  return 'autre'
+}
+
+async function journaliser(nom, userId, detail) {
+  // Jamais bloquant : une mesure qui échoue ne doit pas casser un envoi.
+  // Et on lit `error` — supabase-js ne lève pas d'exception quand la base refuse.
+  const { error } = await supabase.from('evenements')
+    .insert({ user_id: userId, nom, detail: { ...detail, plateforme: plateforme() } })
+  if (error) console.warn('journal', nom, ':', error.message)
+}
+
 // Le fichier ressemble-t-il à une photo iPhone ? (le type MIME est souvent vide)
 function estHeic(file) {
   const t = (file?.type || '').toLowerCase()
@@ -107,7 +127,7 @@ async function compresser(file, tailles = TAILLES, qualite = QUALITE) {
   try {
     for (const max of tailles) {
       const blob = await versJpeg(source, max, qualite)
-      if (blob) return blob
+      if (blob) return { blob, max }
     }
   } finally {
     if (typeof source.close === 'function') source.close() // ImageBitmap
@@ -130,7 +150,17 @@ async function empreinte(blob) {
 // Uploade la photo optimisée et renvoie son URL publique.
 // Si une image au contenu identique existe déjà, on la réutilise sans la renvoyer.
 export async function uploadPhotoOptimisee(file, userId) {
-  const blob = await compresser(file)
+  const taille = file?.size || null
+  const type = file?.type || ''
+
+  let blob, max
+  try {
+    ;({ blob, max } = await compresser(file))
+  } catch (e) {
+    await journaliser('photo_echec', userId, { code: e.code || 'INCONNU', etape: 'compression', taille, type })
+    throw e
+  }
+
   const hash = await empreinte(blob)
   const nom = `${userId}/${hash}.jpg`
 
@@ -140,8 +170,13 @@ export async function uploadPhotoOptimisee(file, userId) {
     .upload(nom, blob, { upsert: false, contentType: 'image/jpeg' })
 
   if (error && !/exists|duplicate|already/i.test(error.message || '')) {
+    await journaliser('photo_echec', userId, { code: 'RESEAU', etape: 'envoi', taille, type, message: error.message })
     throw erreurPhoto('RESEAU', error.message || 'envoi refusé')
   }
+
+  // `largeur_max` dit à quelle taille ça a fini par passer : si des 720 et des
+  // 480 apparaissent, le réessai sauve réellement des membres.
+  await journaliser('photo_ok', userId, { taille, type, taille_finale: blob.size, largeur_max: max })
 
   const { data } = supabase.storage.from('avatars').getPublicUrl(nom)
   return data.publicUrl
@@ -154,10 +189,25 @@ export async function uploadPhotoOptimisee(file, userId) {
 // doivent écrire au MÊME endroit. C'est en ayant deux copies divergentes que
 // l'inscription a fini par déposer les selfies dans le bucket public.
 export async function envoyerSelfieVerif(file, userId) {
-  const blob = await compresser(file, [1000, 720, 480], 0.85)
+  const taille = file?.size || null
+  const type = file?.type || ''
+
+  let blob, max
+  try {
+    ;({ blob, max } = await compresser(file, [1000, 720, 480], 0.85))
+  } catch (e) {
+    await journaliser('selfie_echec', userId, { code: e.code || 'INCONNU', etape: 'compression', taille, type })
+    throw e
+  }
+
   const chemin = `${userId}/selfie-${Date.now()}.jpg`
   const { error } = await supabase.storage.from('verifications')
     .upload(chemin, blob, { contentType: 'image/jpeg', upsert: true })
-  if (error) throw erreurPhoto('RESEAU', error.message || 'envoi refusé')
+  if (error) {
+    await journaliser('selfie_echec', userId, { code: 'RESEAU', etape: 'envoi', taille, type, message: error.message })
+    throw erreurPhoto('RESEAU', error.message || 'envoi refusé')
+  }
+
+  await journaliser('selfie_ok', userId, { taille, type, taille_finale: blob.size, largeur_max: max })
   return chemin
 }
