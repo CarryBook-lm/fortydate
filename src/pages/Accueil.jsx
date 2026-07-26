@@ -1834,10 +1834,20 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
     const aVoir = (data || []).filter(a => a.auteur_id !== moi.id)
       .map(a => ({ annonce_id: a.id, visiteur_id: moi.id }))
     if (aVoir.length) {
-      try {
-        await supabase.from('annonces_vues')
-          .upsert(aVoir, { onConflict: 'annonce_id,visiteur_id', ignoreDuplicates: true })
-      } catch (_) {}
+      // supabase-js ne LÈVE PAS d'exception quand la base refuse : l'erreur
+      // arrive dans `error`. Un try/catch ne voyait donc rien.
+      const { error: errVues } = await supabase.from('annonces_vues')
+        .upsert(aVoir, { onConflict: 'annonce_id,visiteur_id', ignoreDuplicates: true })
+      if (errVues) {
+        // Un seul lot pour toutes les annonces : une seule ligne refusée
+        // annule l'insertion entière. On réessaie une par une.
+        console.warn('vues annonces, lot refusé :', errVues.message)
+        for (const v of aVoir) {
+          const { error: errUne } = await supabase.from('annonces_vues')
+            .upsert([v], { onConflict: 'annonce_id,visiteur_id', ignoreDuplicates: true })
+          if (errUne) console.warn('vue non comptée', v.annonce_id, ':', errUne.message)
+        }
+      }
     }
   }
   useEffect(() => { if (moi) charger() }, [moi]) // eslint-disable-line
@@ -1992,6 +2002,7 @@ function Admin({ onVoir }) {
   const [chargeAct, setChargeAct] = useState(false)
   const [errAct, setErrAct] = useState('')
   const [flash, setFlash] = useState('')
+  const [totaux, setTotaux] = useState(null) // comptages exacts faits en base
 
   // Bornes de la période choisie (début inclus, fin exclue)
   function bornes(p) {
@@ -2021,8 +2032,8 @@ function Admin({ onVoir }) {
   useEffect(() => {
     ;(async () => {
       const { data: m } = await supabase.from('profiles')
-        .select('id, prenom, date_naissance, genre, pays_residence, ville, photo_principale, telephone, abo_statut, abo_expire_at, bloque, cree_at')
-        .order('cree_at', { ascending: false }).limit(500)
+        .select('id, prenom, date_naissance, genre, pays_residence, ville, photo_principale, telephone, abo_statut, abo_expire_at, bloque, verifie, cree_at')
+        .order('cree_at', { ascending: false }).limit(2000)
       setMembres(m || [])
       // Paiements : via l'API admin (contourne la RLS, réservé à l'admin)
       try {
@@ -2106,17 +2117,49 @@ function Admin({ onVoir }) {
     }
   }, [vue, signalements]) // eslint-disable-line
 
+  // Comptages EXACTS, faits EN BASE. Un total déduit du nombre de lignes
+  // chargées ne mesure que le plafond de la requête, pas la réalité.
+  // count: 'exact' + head: true ne rapatrie aucune ligne.
+  useEffect(() => {
+    let annule = false
+    ;(async () => {
+      const { debut, fin } = bornes(periode)
+      const compter = async (affiner) => {
+        let q = supabase.from('profiles').select('id', { count: 'exact', head: true })
+        if (debut) q = q.gte('cree_at', debut.toISOString()).lt('cree_at', fin.toISOString())
+        if (affiner) q = affiner(q)
+        const { count, error } = await q
+        if (error) { console.warn('comptage :', error.message); return null }
+        return count || 0
+      }
+      const [total, hommes, femmes, bloques, verifies] = await Promise.all([
+        compter(null),
+        compter(q => q.eq('genre', 'homme')),
+        compter(q => q.eq('genre', 'femme')),
+        compter(q => q.eq('bloque', true)),
+        compter(q => q.eq('verifie', true)),
+      ])
+      if (annule) return
+      setTotaux(total === null ? null : { total, hommes, femmes, bloques, verifies })
+    })()
+    return () => { annule = true }
+  }, [periode]) // eslint-disable-line
+
   // Statistiques sur la période choisie
   const stats = (() => {
-    const ms = (membres || []).filter(x => dansPeriode(x.cree_at, periode))
     const ps = (paiements || []).filter(x => dansPeriode(x.cree_at || x.created_at, periode))
-    const total = ms.length
-    const hommes = ms.filter(x => x.genre === 'homme').length
-    const femmes = ms.filter(x => x.genre === 'femme').length
-    const bloques = ms.filter(x => x.bloque).length
-    const verifies = ms.filter(x => x.verifie).length
     const revenus = ps.reduce((s, p) => s + (Number(p.montant) || 0), 0)
-    return { total, hommes, femmes, bloques, verifies, revenus }
+    if (totaux) return { ...totaux, revenus }
+    // Secours seulement : la liste est plafonnée, ces chiffres peuvent être faux.
+    const ms = (membres || []).filter(x => dansPeriode(x.cree_at, periode))
+    return {
+      total: ms.length,
+      hommes: ms.filter(x => x.genre === 'homme').length,
+      femmes: ms.filter(x => x.genre === 'femme').length,
+      bloques: ms.filter(x => x.bloque).length,
+      verifies: ms.filter(x => x.verifie).length,
+      revenus,
+    }
   })()
 
   // Répartition par pays (sur la période choisie)
@@ -2886,7 +2929,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 24/07 · #BF</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 26/07 · #BG</div>
           </div>
         </div>
       )}
