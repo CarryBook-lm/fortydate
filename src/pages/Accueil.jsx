@@ -2910,12 +2910,13 @@ export default function Accueil({ onDeconnexion }) {
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setInstallOuvert(true) }}>📲 Installer l'application</button>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('annonces')}>📢 Annonces</button>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('questionnaire')}>📝 Questionnaire d'affinités</button>
-            <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Devenir membre VIP</button>
+            {/* Portes vers le paiement : masquées tant que l'accès est offert */}
+            {!GRATUIT_POUR_TOUS && <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Devenir membre VIP</button>}
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setManuelOuvert(true) }}>📖 Comment utiliser FortyDate</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setReglesOuvert(true) }}>📜 Règles du site</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setVerifOuvert(true) }}>{moi?.verifie ? '✅ Profil vérifié' : '✓ Faire vérifier mon profil'}</button>
-            <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setAvantagesOuvert(true) }}>⭐ Gratuit ou VIP ?</button>
+            {!GRATUIT_POUR_TOUS && <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setAvantagesOuvert(true) }}>⭐ Gratuit ou VIP ?</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setContactOuvert(true) }}>✉️ Nous contacter</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setModalMdp(true) }}>🔑 Changer mon mot de passe</button>
             <button className="fdh-drawer-item" onClick={async () => {
@@ -2923,7 +2924,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 26/07 · #BI</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 26/07 · #BJ</div>
           </div>
         </div>
       )}
