@@ -7,6 +7,19 @@
 import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { uploadPhotoOptimisee, envoyerSelfieVerif, conseilPhoto } from '../lib/photo'
+
+// ============================================================
+//  ⚠️  ACCÈS GRATUIT POUR TOUS — activé le 26/07/2026
+//
+//  Le paiement ne fonctionne pas. Plutôt que de laisser les membres
+//  buter sur un mur qu'ils ne peuvent pas franchir, tout est ouvert.
+//
+//  POUR REVENIR À LA NORMALE : passer cette valeur à false, puis
+//  redéployer. Rien d'autre à toucher, et RIEN N'A ÉTÉ MODIFIÉ EN BASE :
+//  les abonnements réellement payés restent intacts et repartiront
+//  exactement là où ils en étaient.
+// ============================================================
+const GRATUIT_POUR_TOUS = true
 import { subscribeToPush } from '../lib/push'
 
 /* ---------------- Questionnaire d'affinités (30 questions) ---------------- */
@@ -1179,7 +1192,7 @@ function MonProfil({ moi, onDeconnexion, onMaj }) {
       <div className="fdh-profil-infos">
         <span className="fdh-tag">{moi.situation || '—'}</span>
         <span className="fdh-tag">Recherche : {moi.recherche_genre === 'les_deux' ? 'tout le monde' : moi.recherche_genre}</span>
-        <span className="fdh-tag">{moi.abo_statut === 'actif' ? '⭐ Membre VIP' : 'Découverte (gratuit)'}</span>
+        <span className="fdh-tag">{moi.abo_statut === 'actif' ? '⭐ Membre VIP' : (GRATUIT_POUR_TOUS ? '🎁 Accès complet offert' : 'Découverte (gratuit)')}</span>
       </div>
       <button className="fdh-btn-rose" style={{ marginTop: '.4rem' }} onClick={() => setEditer(true)}>✏️ Modifier mon profil</button>
       <button className="fdh-btn-deco" onClick={onDeconnexion}>Se déconnecter</button>
@@ -1448,6 +1461,8 @@ function Messages({ moi, ouvrir, setOuvrir, onLu, onFaireAbo, onVoir }) {
 const LIMITE_MSG_JOUR = 5
 
 function estAbonne(moi) {
+  // Tant que l'accès est offert, tout le monde a les droits d'un abonné.
+  if (GRATUIT_POUR_TOUS) return true
   return moi?.abo_statut === 'actif' && moi?.abo_expire_at && new Date(moi.abo_expire_at) > new Date()
 }
 function Visites({ moi, onVoir, onFaireAbo, onDiscuter }) {
@@ -2908,7 +2923,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 26/07 · #BH</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 26/07 · #BI</div>
           </div>
         </div>
       )}
