@@ -9,17 +9,20 @@ import { supabase } from '../lib/supabase'
 import { uploadPhotoOptimisee, envoyerSelfieVerif, conseilPhoto } from '../lib/photo'
 
 // ============================================================
-//  ⚠️  ACCÈS GRATUIT POUR TOUS — activé le 26/07/2026
+//  ACCÈS GRATUIT POUR TOUS — interrupteur d'urgence
 //
-//  Le paiement ne fonctionne pas. Plutôt que de laisser les membres
-//  buter sur un mur qu'ils ne peuvent pas franchir, tout est ouvert.
+//  Ouvert le 26/07/2026 (CamPay refusait les sites de rencontres,
+//  plus aucun paiement ne passait), REFERMÉ le 27/07/2026 une fois
+//  la chaîne Chariow validée par un vrai paiement.
 //
-//  POUR REVENIR À LA NORMALE : passer cette valeur à false, puis
-//  redéployer. Rien d'autre à toucher, et RIEN N'A ÉTÉ MODIFIÉ EN BASE :
-//  les abonnements réellement payés restent intacts et repartiront
-//  exactement là où ils en étaient.
+//  À true  : tout le monde a les droits d'un abonné, les verrous et
+//            le bandeau d'abonnement disparaissent.
+//  À false : fonctionnement normal (état actuel).
+//
+//  Basculer cette seule valeur suffit : rien n'est touché en base,
+//  les abonnements réellement payés restent intacts.
 // ============================================================
-const GRATUIT_POUR_TOUS = true
+const GRATUIT_POUR_TOUS = false
 import { subscribeToPush } from '../lib/push'
 
 /* ---------------- Questionnaire d'affinités (30 questions) ---------------- */
@@ -2933,7 +2936,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 27/07 · #BL</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 27/07 · #BM</div>
           </div>
         </div>
       )}
