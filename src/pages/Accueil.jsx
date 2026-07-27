@@ -1588,14 +1588,24 @@ function Abonnement({ moi, onFini, onClose }) {
   // « Bienvenue » disparaît et les deux formules standard deviennent disponibles.
   const plansDispo = dejaAbonne ? PLANS.filter(p => p.id !== 'bienvenue') : PLANS
   const planDispo = (x) => dejaAbonne ? x.id !== 'bienvenue' : x.id === 'bienvenue'
-  const [tel, setTel] = useState('')
+  // Numéro pré-rempli depuis le profil, sans l'indicatif du pays
+  const [tel, setTel] = useState(() => {
+    const brut = String(moi?.telephone || '').replace(/[^0-9]/g, '')
+    const d = (INDICATIFS.find(i => i.c === (moi?.pays_residence || 'CM').toUpperCase()) || {}).d
+    const sansPlus = d ? d.slice(1) : ''
+    return sansPlus && brut.startsWith(sansPlus) ? brut.slice(sansPlus.length) : brut
+  })
   const [plan, setPlan] = useState(plansDispo.find(planDispo) || plansDispo[0])
   const [etape, setEtape] = useState('plans') // plans | methode | numero | attente | ok | echec
-  const [operateur, setOperateur] = useState('')
   const [msg, setMsg] = useState('')
   const [idx, setIdx] = useState(0)
 
-  const estCameroun = (moi?.pays_residence || 'CM') === 'CM'
+  // Le pays vient du PROFIL : le membre n'a plus à le choisir pendant le paiement.
+  // C'est ce code pays qui part chez Chariow (phone.country_code) et qui détermine
+  // les moyens de paiement proposés sur leur page.
+  const paysProfil = (moi?.pays_residence || 'CM').toUpperCase()
+  const [paysPaiement, setPaysPaiement] = useState(paysProfil)
+  const indicatif = INDICATIFS.find(i => i.c === paysPaiement) || INDICATIFS[0]
 
   useEffect(() => {
     if (etape !== 'attente') return
@@ -1603,44 +1613,25 @@ function Abonnement({ moi, onFini, onClose }) {
     return () => clearInterval(t)
   }, [etape])
 
-  async function payer() {
-    const num = tel.replace(/\s+/g, '')
-    if (!/^(\+?237)?6\d{8}$/.test(num)) { setMsg('Numéro MTN/Orange invalide (ex : 6XXXXXXXX).'); return }
-    setEtape('attente'); setIdx(0); setMsg('')
-    try {
-      const r = await fetch('/api/campay-collect', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ montant: plan.prix, jours: plan.jours, telephone: num, user_id: moi.id })
-      })
-      const d = await r.json()
-      if (!r.ok || !d.reference) { setEtape('echec'); setMsg(d.error || 'Paiement refusé. Réessaie.'); return }
-      const ref = d.reference
-      let n = 0
-      const timer = setInterval(async () => {
-        n++
-        try {
-          const s = await fetch('/api/campay-status?reference=' + ref)
-          const sd = await s.json()
-          if (sd.status === 'SUCCESSFUL') { clearInterval(timer); setEtape('ok'); onFini && onFini() }
-          else if (sd.status === 'FAILED') { clearInterval(timer); setEtape('echec'); setMsg('Paiement échoué' + (sd.reason ? ' : ' + sd.reason : ' ou annulé.')) }
-        } catch (_) {}
-        if (n > 30) { clearInterval(timer); setEtape(e => e === 'ok' ? e : 'echec'); setMsg("Délai dépassé. Si tu as bien payé, ton abonnement s'activera sous peu.") }
-      }, 4000)
-    } catch (e) { setEtape('echec'); setMsg('Connexion au paiement impossible (teste sur le site en ligne).') }
-  }
+  // La fonction payer() qui appelait CamPay a été retirée le 26/07 :
+  // CamPay n'accepte pas les sites de rencontres. Tout passe par Chariow.
 
   async function payerChariow() {
+    const num = String(tel).replace(/[^0-9]/g, '')
+    // Un numéro valide est indispensable : sans lui, l'API remplaçait par
+    // 000000000 et la page Chariow redemandait pays + numéro au membre.
+    if (num.length < 6) { setMsg('Entre ton numéro de téléphone pour continuer.'); setEtape('numero'); return }
     setMsg(''); setEtape('redir')   // retour visuel IMMÉDIAT
     try {
       const { data: { user } } = await supabase.auth.getUser()
       const r = await fetch('/api/chariow-checkout', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: plan.id, user_id: moi.id, email: user?.email, first_name: moi.prenom, phone: tel || moi.telephone, pays: moi.pays_residence })
+        body: JSON.stringify({ plan: plan.id, user_id: moi.id, email: user?.email, first_name: moi.prenom, phone: num, pays: paysPaiement })
       })
       const d = await r.json()
       if (d.checkout_url) { window.location.href = d.checkout_url; return }
-      setEtape('methode'); setMsg(d.error || 'Paiement carte indisponible pour le moment.')
-    } catch (e) { setEtape('methode'); setMsg('Connexion impossible (teste sur le site en ligne).') }
+      setEtape('numero'); setMsg(d.error || 'Paiement indisponible pour le moment.')
+    } catch (e) { setEtape('numero'); setMsg('Connexion impossible (teste sur le site en ligne).') }
   }
 
   const enAttente = etape === 'attente' || etape === 'redir'
@@ -1680,38 +1671,40 @@ function Abonnement({ moi, onFini, onClose }) {
             <div className="fdh-modal-emoji">😕</div>
             <h2>Paiement non abouti</h2>
             <p>{msg || "Le paiement n'a pas pu être finalisé."}</p>
-            <button className="fdh-btn-rose" style={{ width: '100%' }} onClick={() => { setMsg(''); setEtape('methode') }}>Réessayer</button>
+            <button className="fdh-btn-rose" style={{ width: '100%' }} onClick={() => { setMsg(''); setEtape('numero') }}>Réessayer</button>
             <button className="fdh-btn-texte" onClick={onClose}>Fermer</button>
           </div>
 
-        ) : etape === 'methode' ? (
-          <>
-            <div className="fdh-modal-badge">{plan.nom} · {plan.prix.toLocaleString('fr-FR')} F</div>
-            <h2 className="fdh-methode-titre">Choisis ta méthode</h2>
-            <p className="fdh-modal-sous">Avec quel moyen veux-tu payer ?</p>
-            {estCameroun ? (
-              <>
-                <button className="fdh-btn-mtn" onClick={() => { setMsg(''); setOperateur('MTN'); setEtape('numero') }}>📱 MTN Mobile Money</button>
-                <button className="fdh-btn-orange" onClick={() => { setMsg(''); setOperateur('ORANGE'); setEtape('numero') }}>📱 Orange Money</button>
-              </>
-            ) : (
-              <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '.6rem' }} onClick={payerChariow}>💳 Payer par carte / Mobile Money</button>
-            )}
-            {msg && <div className="fdh-abo-msg err">{msg}</div>}
-            <button className="fdh-btn-texte" onClick={() => setEtape('plans')}>← Retour</button>
-          </>
-
         ) : etape === 'numero' ? (
           <div className="fdh-numero">
-            <h2 className="fdh-numero-titre">Entre ton numéro {operateur}</h2>
-            <p className="fdh-numero-sous">9 chiffres, sans +237</p>
-            <input className="fdh-numero-in" value={tel} placeholder="6XXXXXXXX" inputMode="numeric"
-              onChange={e => setTel(e.target.value)} />
+            <div className="fdh-modal-badge">{plan.nom} · {plan.prix.toLocaleString('fr-FR')} F</div>
+            <h2 className="fdh-numero-titre">Confirme ton numéro</h2>
+            <p className="fdh-numero-sous">
+              Il sert à te proposer les moyens de paiement de ton pays.
+            </p>
+
+            {/* Pays PRÉ-REMPLI depuis le profil. Modifiable, mais le membre
+                n'a rien à choisir : c'est déjà le bon dans la quasi-totalité des cas. */}
+            <div className="fdh-tel-ligne">
+              <select className="fdh-tel-pays" value={paysPaiement}
+                onChange={e => setPaysPaiement(e.target.value)} aria-label="Pays">
+                {INDICATIFS.map(i => (
+                  <option key={i.c} value={i.c}>{i.f} {i.d}</option>
+                ))}
+              </select>
+              <input className="fdh-tel-num" value={tel} placeholder="Ton numéro" inputMode="numeric"
+                onChange={e => setTel(e.target.value.replace(/[^0-9]/g, ''))} />
+            </div>
+            <p className="fdh-numero-sous" style={{ marginTop: '.4rem' }}>
+              {indicatif.f} {NOM_PAYS[paysPaiement] || paysPaiement} · sans l'indicatif {indicatif.d}
+            </p>
+
             {msg && <div className="fdh-abo-msg err">{msg}</div>}
-            <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }} onClick={payer}>
-              💎 Payer {plan.prix.toLocaleString('fr-FR')} FCFA
+            <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }} onClick={payerChariow}>
+              💎 Payer {prixDansDevise(plan.prix, moi?.devise).principal}
             </button>
-            <button className="fdh-btn-texte" onClick={() => { setMsg(''); setEtape('methode') }}>← Retour</button>
+            <p className="fdh-abo-note">Paiement sécurisé · Mobile Money ou carte bancaire</p>
+            <button className="fdh-btn-texte" onClick={() => { setMsg(''); setEtape('plans') }}>← Retour</button>
           </div>
 
         ) : (
@@ -1734,10 +1727,10 @@ function Abonnement({ moi, onFini, onClose }) {
               })}
             </div>
             <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1.2rem' }}
-              onClick={() => { setMsg(''); estCameroun ? setEtape('methode') : payerChariow() }}>
+              onClick={() => { setMsg(''); setEtape('numero') }}>
               Payer {prixDansDevise(plan.prix, moi?.devise).principal}
             </button>
-            <p className="fdh-abo-note">Paiement sécurisé · {estCameroun ? 'Mobile Money (MTN & Orange)' : 'Carte / Mobile Money'}</p>
+            <p className="fdh-abo-note">Paiement sécurisé · Mobile Money ou carte bancaire</p>
           </>
         )}
       </div>
@@ -2911,7 +2904,7 @@ export default function Accueil({ onDeconnexion }) {
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('annonces')}>📢 Annonces</button>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('questionnaire')}>📝 Questionnaire d'affinités</button>
             {/* Portes vers le paiement : masquées tant que l'accès est offert */}
-            {!GRATUIT_POUR_TOUS && <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Devenir membre VIP</button>}
+            {(!GRATUIT_POUR_TOUS || estAdmin) && <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Devenir membre VIP{GRATUIT_POUR_TOUS ? ' (test)' : ''}</button>}
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setManuelOuvert(true) }}>📖 Comment utiliser FortyDate</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setReglesOuvert(true) }}>📜 Règles du site</button>
@@ -2924,7 +2917,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 26/07 · #BJ</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 26/07 · #BK</div>
           </div>
         </div>
       )}
@@ -3256,6 +3249,11 @@ function Style() {
       .fdh-floute-ic{font-size:1.6rem}
       .fdh-teaser{width:100%;border:0;border-radius:12px;padding:.7rem .9rem;margin-bottom:.8rem;cursor:pointer;
         background:linear-gradient(90deg,#D62A5E,#4A1546);color:#fff;font-size:.85rem;font-weight:700;text-align:left}
+      .fdh-tel-ligne{display:flex;gap:.5rem;margin-top:.8rem}
+      .fdh-tel-pays{flex:0 0 7.5rem;border:1.5px solid #E4D3D8;border-radius:12px;padding:.7rem .4rem;
+        font-size:.95rem;background:#fff;color:#3A0F38;font-weight:700}
+      .fdh-tel-num{flex:1;min-width:0;border:1.5px solid #E4D3D8;border-radius:12px;padding:.7rem .8rem;
+        font-size:1.05rem;letter-spacing:.04em}
       .fdh-teaser b{font-size:1rem}
       .fdh-msg-reste{font-size:.76rem;color:#7A6B74;text-align:center;padding:.2rem .5rem .4rem}
       .fdh-msg-reste b{color:#4A1546}
