@@ -23,6 +23,44 @@ import { uploadPhotoOptimisee, envoyerSelfieVerif, conseilPhoto } from '../lib/p
 //  les abonnements réellement payés restent intacts.
 // ============================================================
 const GRATUIT_POUR_TOUS = false
+
+// ============================================================
+//  IDENTITÉ « ÉQUIPE FORTYDATE »
+//
+//  Les messages de service partent du compte de l'administratrice.
+//  Sans traitement, le membre lit le prénom et voit la photo PERSONNELS
+//  de Landrine. L'habillage ci-dessous est appliqué À L'AFFICHAGE
+//  SEULEMENT : rien n'est modifié en base, le profil reste intact
+//  partout ailleurs, et c'est réversible en supprimant la fonction.
+// ============================================================
+const ID_ADMIN = 'e9f1db08-496d-455b-bf8d-b398c7a0375a'
+const LOGO_EQUIPE = '/icon-192.png'
+
+function habillerEquipe(p) {
+  if (!p || p.id !== ID_ADMIN) return p
+  return { ...p, prenom: 'FortyDate', photo_principale: LOGO_EQUIPE, verifie: true, equipe: true }
+}
+
+// Modèles pré-remplis de la fenêtre d'envoi admin. {prenom} est remplacé
+// à l'ouverture, et le texte reste modifiable avant l'envoi.
+const MODELES_ADMIN = [
+  ['📷 Photo de profil manquante',
+   "Bonjour {prenom}, ici l'équipe FortyDate. Nous ne pouvons pas valider ta vérification : ton profil n'a pas de photo. Ajoute-la depuis le menu ☰ puis « Mon profil », et renvoie ton selfie ensuite. Sans photo de profil, les autres membres ne te voient pratiquement pas."],
+  ['🤳 Selfie illisible',
+   "Bonjour {prenom}, ici l'équipe FortyDate. Ton selfie de vérification n'est pas exploitable : trop sombre, flou, ou le visage n'est pas entier. Reprends-en un en pleine lumière depuis le menu ☰ puis « Faire vérifier mon profil »."],
+  ['👤 Ajoute ta photo',
+   "Bonjour {prenom} ! Ton profil n'a pas encore de photo. Sans elle, presque personne ne s'arrête sur un profil — et tu passes à côté de rencontres. Ajoute-la depuis le menu ☰ puis « Mon profil » : trente secondes, et tout change."],
+  ['✍️ Message libre', ''],
+]
+
+// « il y a 2 h », « il y a 3 j » — pour dire quand on a écrit à quelqu'un
+function ilYA(d) {
+  if (!d) return ''
+  const min = Math.floor((Date.now() - new Date(d).getTime()) / 60000)
+  if (min < 60) return 'il y a ' + Math.max(1, min) + ' min'
+  if (min < 1440) return 'il y a ' + Math.floor(min / 60) + ' h'
+  return 'il y a ' + Math.floor(min / 1440) + ' j'
+}
 import { subscribeToPush } from '../lib/push'
 
 /* ---------------- Questionnaire d'affinités (30 questions) ---------------- */
@@ -1261,7 +1299,12 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo, onVoir }) {
   const dernierSignal = useRef(0)
   const minuteurSaisie = useRef(null)
   const abonne = estAbonne(moi)
-  const restants = abonne ? Infinity : Math.max(0, LIMITE_MSG_JOUR - (envoyesJour ?? 0))
+  // La conversation avec l'équipe échappe à TOUT verrou payant. Sans cette
+  // exception, « ta vérification a échoué, ajoute ta photo » se retrouve
+  // derrière un mur chez celui-là même qui doit le lire — et il ne peut
+  // pas répondre pour demander de l'aide.
+  const estEquipe = contact.id === ID_ADMIN
+  const restants = (abonne || estEquipe) ? Infinity : Math.max(0, LIMITE_MSG_JOUR - (envoyesJour ?? 0))
 
   // Compte les messages envoyés aujourd'hui (toutes conversations confondues)
   useEffect(() => {
@@ -1340,7 +1383,7 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo, onVoir }) {
 
   async function envoyer() {
     const t = texte.trim(); if (!t || envoi) return
-    if (!abonne && restants <= 0) return
+    if (!abonne && !estEquipe && restants <= 0) return
     setEnvoi(true); setEmoOuvert(false)
     dernierSignal.current = 0; diffuser('arrete')
     const { data, error } = await supabase.from('messages')
@@ -1348,7 +1391,7 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo, onVoir }) {
       .select().single()
     if (!error && data) {
       setMsgs(m => [...m, data]); setTexte(''); setRepondA(null)
-      if (!abonne) setEnvoyesJour(n => (n ?? 0) + 1)
+      if (!abonne && !estEquipe) setEnvoyesJour(n => (n ?? 0) + 1)
     }
     setEnvoi(false)
   }
@@ -1357,13 +1400,15 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo, onVoir }) {
     <div className="fdh-chat">
       <div className="fdh-chat-head">
         <button className="fdh-retour" onClick={onRetour}>‹</button>
-        <button className="fdh-chat-profil" onClick={() => onVoir && onVoir(contact.id)}
-          title={`Voir le profil de ${contact.prenom}`}>
+        <button className="fdh-chat-profil" onClick={() => !estEquipe && onVoir && onVoir(contact.id)}
+          title={estEquipe ? 'Messages de l\'équipe FortyDate' : `Voir le profil de ${contact.prenom}`}>
           <Avatar url={contact.photo_principale} prenom={contact.prenom} taille="38px" />
           <span className="fdh-chat-nom">{contact.prenom}<Badge p={contact} />
-            {ecrit
-              ? <span className="fdh-ecrit-txt">en train d'écrire…</span>
-              : <Presence p={contact} avecTexte />}</span>
+            {estEquipe
+              ? <span className="fdh-ecrit-txt">Messages de l'équipe</span>
+              : ecrit
+                ? <span className="fdh-ecrit-txt">en train d'écrire…</span>
+                : <Presence p={contact} avecTexte />}</span>
         </button>
       </div>
 
@@ -1387,7 +1432,7 @@ function Chat({ moi, contact, onRetour, onLu, onFaireAbo, onVoir }) {
         </div>
       )}
 
-      {!abonne && envoyesJour !== null && (
+      {!abonne && !estEquipe && envoyesJour !== null && (
         restants > 0
           ? <div className="fdh-msg-reste">Il te reste <b>{restants}</b> message{restants > 1 ? 's' : ''} aujourd'hui · <span onClick={() => onFaireAbo && onFaireAbo()}>Passer VIP ›</span></div>
           : <button className="fdh-teaser" style={{ margin: '0 .5rem .4rem' }} onClick={() => onFaireAbo && onFaireAbo()}>
@@ -1417,7 +1462,8 @@ function Messages({ moi, ouvrir, setOuvrir, onLu, onFaireAbo, onVoir }) {
       const { data, error } = await supabase.rpc('mes_conversations')
       if (annule) return
       if (error) { setErr(error.message); return }
-      setMatchs(data || [])
+      // Un seul point d'habillage : la liste ET la conversation ouverte en héritent
+      setMatchs((data || []).map(habillerEquipe))
       // Compter les messages non lus reçus, par expéditeur
       const { data: msgs } = await supabase.from('messages')
         .select('expediteur').eq('destinataire', moi.id).eq('lu', false)
@@ -1973,6 +2019,72 @@ const ONGLETS_ACTION = [
   ['abo', '⭐', 'Abonnés', 'abonnes', 'Membres avec un abonnement en cours'],
 ]
 
+/* ---------------- Écrire à un membre au nom de FortyDate ---------------- */
+function EcrireMembre({ cible, dejaEcrit, onClose, onEnvoye }) {
+  const [texte, setTexte] = useState('')
+  const [envoi, setEnvoi] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  function choisirModele(corps) {
+    setMsg('')
+    setTexte(String(corps).replace(/\{prenom\}/g, cible.prenom || ''))
+  }
+
+  async function envoyer() {
+    const t = texte.trim()
+    if (!t || envoi) return
+    setEnvoi(true); setMsg('')
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      // `.select()` est INDISPENSABLE : supabase-js ne lève pas d'exception
+      // quand la base refuse, et une écriture bloquée par une policy RLS
+      // renvoie « succès, 0 ligne ». Sans ça on affiche « envoyé » à tort.
+      const { data, error } = await supabase.from('messages')
+        .insert({ expediteur: user.id, destinataire: cible.id, contenu: t })
+        .select()
+      if (error) throw error
+      if (!data || data.length === 0) throw new Error('message non enregistré')
+      onEnvoye && onEnvoye(cible.id, new Date().toISOString())
+      onClose()
+    } catch (e) {
+      setMsg("Envoi impossible : " + (e.message || 'erreur inconnue'))
+    } finally { setEnvoi(false) }
+  }
+
+  return (
+    <div className="fdh-modal-fond" onClick={onClose}>
+      <div className="fdh-modal" onClick={e => e.stopPropagation()}>
+        <button className="fdh-modal-x" onClick={onClose} aria-label="Fermer">✕</button>
+        <div className="fdh-modal-badge">✉️ Écrire à {cible.prenom}</div>
+        <p className="fdh-modal-sous">
+          Il recevra ce message dans sa boîte, signé « FortyDate » avec le logo.
+        </p>
+        {dejaEcrit && (
+          <div className="fdh-adm-deja">⚠️ Un message lui a déjà été envoyé {ilYA(dejaEcrit)}.</div>
+        )}
+
+        <div className="fdh-modeles">
+          {MODELES_ADMIN.map(([titre, corps]) => (
+            <button key={titre} type="button" className="fdh-modele"
+              onClick={() => choisirModele(corps)}>{titre}</button>
+          ))}
+        </div>
+
+        <textarea className="fdh-eta" rows={7} value={texte}
+          placeholder="Choisis un modèle ci-dessus, ou écris directement…"
+          onChange={e => setTexte(e.target.value)} />
+
+        {msg && <div className="fdh-abo-msg err">{msg}</div>}
+        <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '.6rem' }}
+          disabled={envoi || !texte.trim()} onClick={envoyer}>
+          {envoi ? 'Envoi…' : 'Envoyer le message'}
+        </button>
+        <button className="fdh-btn-texte" onClick={onClose}>Annuler</button>
+      </div>
+    </div>
+  )
+}
+
 function Admin({ onVoir }) {
   const [vue, setVue] = useState('bord') // bord | membres | pays | paiements | signal
   const [membres, setMembres] = useState(null)
@@ -1993,6 +2105,31 @@ function Admin({ onVoir }) {
   const [errAct, setErrAct] = useState('')
   const [flash, setFlash] = useState('')
   const [totaux, setTotaux] = useState(null) // comptages exacts faits en base
+  const [ecrireA, setEcrireA] = useState(null)   // membre à qui on rédige un message
+  const [ecritsA, setEcritsA] = useState({})     // { id du membre : date du dernier message }
+
+  // Qui a déjà reçu un message de l'équipe ? UNE seule requête, sinon on
+  // relance deux fois les mêmes personnes et on en oublie d'autres.
+  useEffect(() => {
+    let annule = false
+    ;(async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data, error } = await supabase.from('messages')
+        .select('destinataire, cree_at').eq('expediteur', user.id)
+        .order('cree_at', { ascending: false })
+      if (annule) return
+      if (error) { console.warn('deja ecrits :', error.message); return }
+      const carte = {}
+      // Trié du plus récent au plus ancien : la première date rencontrée est la bonne.
+      for (const m of (data || [])) { if (!carte[m.destinataire]) carte[m.destinataire] = m.cree_at }
+      setEcritsA(carte)
+    })()
+    return () => { annule = true }
+  }, [])
+
+  // Mise à jour immédiate après un envoi, sans recharger l'écran
+  const marquerEcrit = (id, quand) => setEcritsA(c => ({ ...c, [id]: quand }))
 
   // Bornes de la période choisie (début inclus, fin exclue)
   function bornes(p) {
@@ -2297,9 +2434,14 @@ function Admin({ onVoir }) {
                 <Avatar url={m.photo_principale} prenom={m.prenom} taille="44px" />
                 <div className="fdh-adm-info" onClick={() => onVoir(m.id)}>
                   <div className="fdh-adm-nom">{m.prenom}{ageDepuis(m.date_naissance) ? `, ${ageDepuis(m.date_naissance)}` : ''}{abonneActif(m) ? ' ⭐' : ''}{m.bloque ? ' 🚫' : ''}</div>
-                  <div className="fdh-adm-sous">{m.genre || '—'} · {NOM_PAYS[m.pays_residence] || m.pays_residence || '?'}{m.ville ? ' · ' + m.ville : ''}</div>
+                  <div className="fdh-adm-sous">{m.genre || '—'} · {NOM_PAYS[m.pays_residence] || m.pays_residence || '?'}{m.ville ? ' · ' + m.ville : ''}
+                    {!m.photo_principale && <span className="fdh-adm-alerte"> · 📷 sans photo</span>}</div>
+                  {ecritsA[m.id] && <div className="fdh-adm-deja-ligne">✉️ écrit {ilYA(ecritsA[m.id])}</div>}
                 </div>
                 <div className="fdh-adm-actions">
+                  <button className={'fdh-adm-btn' + (ecritsA[m.id] ? ' ecrit' : '')}
+                    title={ecritsA[m.id] ? 'Déjà écrit ' + ilYA(ecritsA[m.id]) : 'Écrire à ' + m.prenom}
+                    onClick={() => setEcrireA(m)}>{ecritsA[m.id] ? '✉️✓' : '✉️'}</button>
                   <button className="fdh-adm-btn" onClick={() => basculerBlocage(m)}>{m.bloque ? 'Débloquer' : 'Bloquer'}</button>
                   <button className="fdh-adm-btn danger" onClick={() => supprimerMembre(m)}>🗑️</button>
                 </div>
@@ -2324,8 +2466,12 @@ function Admin({ onVoir }) {
                 <div className="fdh-verif-bas">
                   <div className="fdh-adm-nom" onClick={() => onVoir(v.id)}>
                     {v.prenom}{ageDepuis(v.date_naissance) ? `, ${ageDepuis(v.date_naissance)}` : ''}
+                    {!v.photo_principale && <span className="fdh-adm-alerte"> · 📷 aucune photo de profil</span>}
                   </div>
                   <div style={{ display: 'flex', gap: '.4rem' }}>
+                    <button className={'fdh-adm-btn' + (ecritsA[v.id] ? ' ecrit' : '')}
+                      title={ecritsA[v.id] ? 'Déjà écrit ' + ilYA(ecritsA[v.id]) : 'Écrire à ' + v.prenom}
+                      onClick={() => setEcrireA(v)}>{ecritsA[v.id] ? '✉️✓' : '✉️'}</button>
                     <button className="fdh-adm-btn" onClick={() => validerProfil(v, false)}>Refuser</button>
                     <button className="fdh-adm-btn ok" onClick={() => validerProfil(v, true)}>Valider ✓</button>
                   </div>
@@ -2376,6 +2522,11 @@ function Admin({ onVoir }) {
           ))}
           {signalements.length === 0 && <p className="fdh-msg">Aucun signalement. 🕊️</p>}
         </div>
+      )}
+
+      {ecrireA && (
+        <EcrireMembre cible={ecrireA} dejaEcrit={ecritsA[ecrireA.id]}
+          onClose={() => setEcrireA(null)} onEnvoye={marquerEcrit} />
       )}
     </div>
   )
@@ -2936,7 +3087,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 27/07 · #BM</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 27/07 · #BN</div>
           </div>
         </div>
       )}
@@ -3385,8 +3536,19 @@ function Style() {
       .fdh-adm-info{flex:1;min-width:0;cursor:pointer}
       .fdh-adm-nom{font-weight:800;color:#3A0F38;font-size:.95rem}
       .fdh-adm-sous{font-size:.78rem;color:#8a7b82}
+      .fdh-adm-alerte{color:#C0392B;font-weight:700}
+      .fdh-adm-deja-ligne{font-size:.72rem;color:#1c8a3e;font-weight:700;margin-top:.15rem}
+      .fdh-adm-deja{background:#FBF1DF;color:#8a6a26;border-radius:10px;padding:.5rem .7rem;
+        font-size:.8rem;font-weight:700;margin:.5rem 0}
+      .fdh-modeles{display:flex;flex-wrap:wrap;gap:.4rem;margin:.7rem 0 .5rem}
+      .fdh-modele{border:1.5px solid #E4D3D8;background:#fff;color:#4A1546;border-radius:99px;
+        padding:.4rem .8rem;font-size:.78rem;font-weight:700;cursor:pointer}
+      .fdh-modele:hover{background:#FBF1DF;border-color:#C69A4E}
+      .fdh-eta{width:100%;border:1.5px solid #E4D3D8;border-radius:12px;padding:.7rem;
+        font-size:.9rem;font-family:inherit;resize:vertical;line-height:1.45}
       .fdh-adm-actions{display:flex;flex-direction:column;gap:.3rem;flex:0 0 auto}
       .fdh-adm-btn{background:#fff;border:1.5px solid #E4D3D8;border-radius:8px;padding:.35rem .6rem;font-size:.78rem;font-weight:700;color:#4A1546;cursor:pointer}
+      .fdh-adm-btn.ecrit{background:#E7F6EC;color:#1c8a3e;border-color:#1c8a3e}
       .fdh-adm-btn.danger{background:#fdeef2;border-color:#f3c0c0;color:#B21F4E}
       .fdh-adm-paie{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1.5px solid #EEE0E4;border-radius:12px;padding:.7rem .8rem}
       .fdh-adm-date{font-size:.78rem;color:#8a7b82}
