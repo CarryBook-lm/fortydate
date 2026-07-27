@@ -2839,16 +2839,32 @@ export default function Accueil({ onDeconnexion }) {
     return () => clearInterval(t)
   }, [moi?.id]) // eslint-disable-line
 
-  // Retour d'un paiement Chariow : l'activation arrive par webhook, on rafraîchit le profil quelques fois
+  // Retour d'un paiement Chariow. L'activation arrive par WEBHOOK, pas par cette
+  // page : on interroge donc le profil quelques fois, en montrant au membre ce
+  // qui se passe. Sans ça il revenait sur l'écran d'accueil sans un mot, après
+  // avoir payé — le pire moment pour laisser quelqu'un dans le doute.
+  const [retourPaiement, setRetourPaiement] = useState(null) // null | attente | ok | lent
+
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (!/[?&]abo=ok/.test(window.location.search)) return
+    setRetourPaiement('attente')
     let n = 0
-    const t = setInterval(() => { n++; rechargerProfil(); if (n >= 6) clearInterval(t) }, 4000)
-    // nettoie l'URL
-    window.history.replaceState({}, '', window.location.pathname)
+    const t = setInterval(() => {
+      n++
+      rechargerProfil()
+      if (n >= 8) { clearInterval(t); setRetourPaiement(e => e === 'attente' ? 'lent' : e) }
+    }, 3000)
+    window.history.replaceState({}, '', window.location.pathname) // nettoie l'URL
     return () => clearInterval(t)
-  }, [])
+  }, []) // eslint-disable-line
+
+  // Dès que l'abonnement apparaît en base, on bascule sur les félicitations.
+  // On teste estAbonneP (les VRAIES colonnes) et non estAbonne, qui renvoie
+  // toujours vrai tant que l'accès est offert à tous.
+  useEffect(() => {
+    if (retourPaiement === 'attente' && estAbonneP(moi)) setRetourPaiement('ok')
+  }, [moi?.abo_statut, moi?.abo_expire_at, retourPaiement]) // eslint-disable-line
 
   const titres = { proximite: 'Proximité', rencontres: 'Rencontre', jaime: "J'aime", messages: 'Messages', match: 'Affinités', visites: 'Visites' }
   const titreOverlay = { profil: 'Mon profil', questionnaire: 'Affinités', abonnement: 'VIP', annonces: 'Annonces' }
@@ -2904,7 +2920,7 @@ export default function Accueil({ onDeconnexion }) {
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('annonces')}>📢 Annonces</button>
             <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('questionnaire')}>📝 Questionnaire d'affinités</button>
             {/* Portes vers le paiement : masquées tant que l'accès est offert */}
-            {(!GRATUIT_POUR_TOUS || estAdmin) && <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Devenir membre VIP{GRATUIT_POUR_TOUS ? ' (test)' : ''}</button>}
+            {(!GRATUIT_POUR_TOUS || estAdmin) && <button className="fdh-drawer-item" onClick={() => ouvrirOverlay('abonnement')}>⭐ Devenir membre VIP</button>}
             {estAdmin && <button className="fdh-drawer-item" onClick={() => allerOnglet('visites')}>👀 Mes visites</button>}
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setManuelOuvert(true) }}>📖 Comment utiliser FortyDate</button>
             <button className="fdh-drawer-item" onClick={() => { setMenuOuvert(false); setReglesOuvert(true) }}>📜 Règles du site</button>
@@ -2917,7 +2933,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 26/07 · #BK</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 27/07 · #BL</div>
           </div>
         </div>
       )}
@@ -2966,6 +2982,47 @@ export default function Accueil({ onDeconnexion }) {
       {installOuvert && <InstallerApp onClose={() => setInstallOuvert(false)} />}
       {verifOuvert && <Verification moi={moi} onClose={() => setVerifOuvert(false)} />}
       {avantagesOuvert && <Avantages moi={moi} onClose={() => setAvantagesOuvert(false)} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
+
+      {/* Retour de la page de paiement Chariow — le membre doit SAVOIR que c'est passé */}
+      {retourPaiement && (
+        <div className="fdh-modal-fond">
+          <div className="fdh-modal" onClick={e => e.stopPropagation()}>
+            {retourPaiement === 'attente' ? (
+              <div className="fdh-modal-attente">
+                <div className="fdh-attente-emoji">⏳</div>
+                <h3>Vérification de ton paiement…</h3>
+                <div className="fdh-spinner" />
+                <p className="fdh-attente-note">Encore quelques secondes, ne ferme pas cette page.</p>
+              </div>
+            ) : retourPaiement === 'ok' ? (
+              <div className="fdh-modal-fin">
+                <div className="fdh-modal-emoji">🎉</div>
+                <h2>Félicitations {moi?.prenom || ''} !</h2>
+                <p><b>Tu es maintenant Membre VIP.</b> Ton abonnement est activé
+                  {moi?.abo_expire_at ? " jusqu'au " + new Date(moi.abo_expire_at).toLocaleDateString('fr-FR') : ''}.</p>
+                <p style={{ marginTop: '.6rem' }}>Tu peux voir qui t'a aimée, qui a visité ton profil,
+                  tes pourcentages d'affinité, et discuter sans limite.</p>
+                <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }}
+                  onClick={() => { setRetourPaiement(null); allerOnglet('jaime') }}>
+                  Voir qui m'a aimée ›
+                </button>
+                <button className="fdh-btn-texte" onClick={() => setRetourPaiement(null)}>Plus tard</button>
+              </div>
+            ) : (
+              <div className="fdh-modal-fin">
+                <div className="fdh-modal-emoji">⏱️</div>
+                <h2>Paiement bien reçu</h2>
+                <p>Ton abonnement est en cours de validation. Il s'active en général
+                  en quelques minutes — tu n'as rien d'autre à faire.</p>
+                <p style={{ marginTop: '.6rem' }}>Si rien n'a changé d'ici une heure,
+                  écris-nous depuis le menu ☰ → ✉️ Nous contacter.</p>
+                <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }}
+                  onClick={() => { setRetourPaiement(null); rechargerProfil() }}>D'accord</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
