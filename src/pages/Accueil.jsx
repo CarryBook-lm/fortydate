@@ -1803,8 +1803,8 @@ function prixDansDevise(prixFcfa, devise) {
 
 const PLANS = [
   { id: 'bienvenue', nom: 'Bienvenue', prix: 1000, jours: 30, note: '1ᵉʳ mois découverte' },
-  { id: 'hebdo', nom: 'Hebdo', prix: 1500, jours: 7, note: '1 semaine' },
-  { id: 'mensuel', nom: 'Mensuel', prix: 5000, jours: 30, note: 'le plus complet' },
+  { id: 'hebdo', nom: 'Hebdo', prix: 1000, jours: 7, note: '1 semaine' },
+  { id: 'mensuel', nom: 'Mensuel', prix: 2500, jours: 30, note: 'le plus complet' },
 ]
 
 function Abonnement({ moi, onFini, onClose }) {
@@ -3348,7 +3348,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BW</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BX</div>
           </div>
         </div>
       )}
