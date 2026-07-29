@@ -1246,6 +1246,25 @@ function MonProfil({ moi, onDeconnexion, onMaj }) {
     } catch (e) { setMsg(conseilPhoto(e)) } finally { setEnvoi(false) }
   }
 
+  // Le geste que tout le monde connaît de WhatsApp : la pastille 📷 sur la
+  // grande photo. Un appui ouvre la galerie, et la photo choisie DEVIENT la
+  // photo de profil. Avant, il fallait deviner deux étapes invisibles :
+  // ajouter au moyen d'un « ＋ » nu, puis appuyer sur la vignette.
+  async function changerPhotoProfil(file) {
+    if (!file) return
+    setEnvoi(true); setMsg('')
+    try {
+      const url = await uploadPhotoOptimisee(file, moi.id)
+      const maj = { photo_principale: url }
+      // Une photo de profil mérite de figurer aussi dans l'album, s'il reste de la place.
+      if (!album.includes(url) && album.length < 5) maj.photos = [...album, url]
+      const { error } = await supabase.from('profiles').update(maj).eq('id', moi.id)
+      if (error) throw error
+      onMaj({ ...moi, ...maj })
+      setMsg('Photo de profil mise à jour ✅')
+    } catch (e) { setMsg(conseilPhoto(e)) } finally { setEnvoi(false) }
+  }
+
   async function definirPrincipale(url) {
     setMenuPhoto(null); setEnvoi(true); setMsg('')
     try {
@@ -1275,13 +1294,24 @@ function MonProfil({ moi, onDeconnexion, onMaj }) {
   const age = ageDepuis(moi.date_naissance)
   return (
     <div className="fdh-profil">
-      <Avatar url={moi.photo_principale} prenom={moi.prenom} taille="120px" />
+      <div className="fdh-avatar-zone">
+        <Avatar url={moi.photo_principale} prenom={moi.prenom} taille="120px" />
+        <label className="fdh-avatar-cam" title="Changer ma photo de profil">
+          {envoi ? '…' : '📷'}
+          <input type="file" accept="image/*" hidden disabled={envoi}
+            onChange={e => e.target.files[0] && changerPhotoProfil(e.target.files[0])} />
+        </label>
+      </div>
       <h2 className="fdh-profil-nom">{moi.prenom}{age ? `, ${age}` : ''}<Badge p={moi} size={22} /></h2>
       <p className="fdh-profil-lieu">{moi.ville ? moi.ville + ' · ' : ''}{NOM_PAYS[moi.pays_residence] || moi.pays_residence}</p>
       {moi.bio && <p className="fdh-profil-bio">« {moi.bio} »</p>}
 
       {/* Album */}
       <h3 className="fdh-album-titre">Mes photos <span>{album.length}/5</span></h3>
+      <p className="fdh-album-aide">
+        Appuie sur 📷 pour changer ta photo de profil. Appuie sur une photo de
+        l'album pour la définir comme photo de profil ou la supprimer.
+      </p>
       <div className="fdh-album">
         {album.map(url => (
           <button key={url} className={'fdh-album-photo' + (url === moi.photo_principale ? ' principale' : '')}
@@ -1292,7 +1322,8 @@ function MonProfil({ moi, onDeconnexion, onMaj }) {
         ))}
         {album.length < 5 && (
           <label className="fdh-album-ajout">
-            {envoi ? '…' : '＋'}
+            <span className="fdh-ajout-plus">{envoi ? '…' : '＋'}</span>
+            <span className="fdh-ajout-txt">{envoi ? 'Envoi…' : 'Ajouter une photo'}</span>
             <input type="file" accept="image/*" hidden disabled={envoi}
               onChange={e => e.target.files[0] && ajouterPhoto(e.target.files[0])} />
           </label>
@@ -3212,7 +3243,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BR</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BS</div>
           </div>
         </div>
       )}
@@ -3466,9 +3497,22 @@ function Style() {
       .fdh-album-photo img{width:100%;height:100%;object-fit:cover;display:block}
       .fdh-album-photo.principale{outline:3px solid #D62A5E;outline-offset:-3px}
       .fdh-album-badge{position:absolute;bottom:0;left:0;right:0;background:rgba(214,42,94,.92);color:#fff;font-size:.7rem;font-weight:700;padding:.15rem}
-      .fdh-album-ajout{aspect-ratio:1;border:2px dashed #D6a9bb;border-radius:12px;display:grid;place-items:center;
-        font-size:1.8rem;color:#D62A5E;cursor:pointer;background:#fff}
+      /* La tuile passe en COLONNE pour accueillir le ＋ et son libellé */
+      .fdh-album-ajout{aspect-ratio:1;border:2px dashed #D6a9bb;border-radius:12px;
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        color:#D62A5E;cursor:pointer;background:#fff}
       .fdh-album-ajout:hover{background:#fdeef3}
+      .fdh-ajout-plus{font-size:1.5rem;line-height:1;color:#D62A5E}
+      .fdh-ajout-txt{font-size:.66rem;color:#B21F4E;font-weight:700;text-align:center;
+        line-height:1.15;margin-top:.15rem;padding:0 .2rem}
+      .fdh-album-aide{font-size:.74rem;color:#8a7b82;margin:-.2rem 0 .5rem;line-height:1.35}
+      /* Pastille 📷 sur la grande photo — le geste connu de WhatsApp */
+      .fdh-avatar-zone{position:relative;display:inline-block;line-height:0}
+      .fdh-avatar-cam{position:absolute;right:-2px;bottom:-2px;width:38px;height:38px;
+        border-radius:50%;background:linear-gradient(135deg,#4A1546,#D62A5E);
+        display:grid;place-items:center;font-size:1.05rem;cursor:pointer;
+        border:3px solid #fff;box-shadow:0 2px 6px rgba(74,21,70,.25);line-height:1}
+      .fdh-avatar-cam:active{transform:scale(.94)}
 
       .fdh-pmenu-fond{position:fixed;inset:0;background:rgba(36,10,42,.7);display:grid;place-items:center;z-index:60;padding:1.5rem}
       .fdh-pmenu{background:#fff;border-radius:20px;padding:1.4rem;max-width:320px;width:100%;text-align:center}
