@@ -1230,6 +1230,36 @@ function MonProfil({ moi, onDeconnexion, onMaj }) {
   const [editer, setEditer] = useState(false)
   const album = Array.isArray(moi?.photos) ? moi.photos : []
 
+  // Suppression de compte. C'est un droit, et sur une application de rencontre
+  // c'est aussi une question de confiance : quelqu'un qui sait qu'il peut
+  // partir s'inscrit plus facilement.
+  const [confirmerSuppr, setConfirmerSuppr] = useState(false)
+  const [motSuppr, setMotSuppr] = useState('')
+  const [suppression, setSuppression] = useState(false)
+  const [msgSuppr, setMsgSuppr] = useState('')
+
+  async function supprimerCompte() {
+    if (motSuppr.trim().toUpperCase() !== 'SUPPRIMER') return
+    setSuppression(true); setMsgSuppr('')
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { setMsgSuppr('Session expirée. Reconnecte-toi.'); setSuppression(false); return }
+      const r = await fetch('/api/supprimer-compte', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + session.access_token }
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok || !d.ok) {
+        setMsgSuppr(d.erreur || 'Suppression impossible. Réessaie dans un instant.')
+        setSuppression(false); return
+      }
+      try { await supabase.auth.signOut() } catch (_) {}
+      window.location.href = '/'
+    } catch (e) {
+      setMsgSuppr('Connexion impossible. Vérifie ta connexion.')
+      setSuppression(false)
+    }
+  }
+
   async function ajouterPhoto(file) {
     if (!file) return
     if (album.length >= 5) { setMsg('Album complet (5 photos maximum).'); return }
@@ -1338,6 +1368,41 @@ function MonProfil({ moi, onDeconnexion, onMaj }) {
       </div>
       <button className="fdh-btn-rose" style={{ marginTop: '.4rem' }} onClick={() => setEditer(true)}>✏️ Modifier mon profil</button>
       <button className="fdh-btn-deco" onClick={onDeconnexion}>Se déconnecter</button>
+      <button className="fdh-btn-suppr" onClick={() => { setMsgSuppr(''); setMotSuppr(''); setConfirmerSuppr(true) }}>
+        Supprimer mon compte
+      </button>
+
+      {confirmerSuppr && (
+        <div className="fdh-modal-fond" onClick={() => !suppression && setConfirmerSuppr(false)}>
+          <div className="fdh-modal" onClick={e => e.stopPropagation()}>
+            <h3 className="fdh-suppr-titre">Supprimer ton compte ?</h3>
+            <p className="fdh-suppr-txt">
+              Tout disparaît définitivement : ton profil, tes photos, tes matchs
+              et tes conversations. Personne ne pourra les retrouver, et cette
+              action ne peut pas être annulée.
+            </p>
+            {/* estAbonneP et NON estAbonne : ce dernier renvoie toujours vrai
+                quand l'accès est offert à tous, l'avertissement s'afficherait
+                alors pour des membres qui n'ont jamais payé. */}
+            {estAbonneP(moi) && (
+              <p className="fdh-suppr-alerte">
+                ⚠️ Ton abonnement Membre VIP est en cours et ne sera pas remboursé.
+              </p>
+            )}
+            <p className="fdh-suppr-txt">Écris <b>SUPPRIMER</b> pour confirmer :</p>
+            <input className="fdh-ein" value={motSuppr} disabled={suppression}
+              onChange={e => setMotSuppr(e.target.value)} placeholder="SUPPRIMER" />
+            {msgSuppr && <div className="fdh-abo-msg err">{msgSuppr}</div>}
+            <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '.8rem' }}
+              disabled={suppression || motSuppr.trim().toUpperCase() !== 'SUPPRIMER'}
+              onClick={supprimerCompte}>
+              {suppression ? 'Suppression…' : '🗑️ Supprimer définitivement'}
+            </button>
+            <button className="fdh-btn-texte" disabled={suppression}
+              onClick={() => setConfirmerSuppr(false)}>Annuler</button>
+          </div>
+        </div>
+      )}
 
       {/* Menu au clic sur une photo */}
       {menuPhoto && (
@@ -3272,7 +3337,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BU</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BV</div>
           </div>
         </div>
       )}
@@ -3388,6 +3453,12 @@ function Style() {
       .fdh-bande-txt b{font-size:.9rem}
       .fdh-bande-txt span{font-size:.74rem;opacity:.9;line-height:1.3}
       .fdh-bande-fl{font-size:1.5rem;flex:0 0 auto;opacity:.8}
+      .fdh-btn-suppr{display:block;margin:1.2rem auto .4rem;background:none;border:0;
+        color:#b7a7ae;font-size:.78rem;text-decoration:underline;cursor:pointer;font-family:inherit}
+      .fdh-suppr-titre{margin:0 0 .5rem;font-size:1.02rem;color:#4A1546}
+      .fdh-suppr-txt{font-size:.82rem;color:#5c4a5e;line-height:1.45;margin:.4rem 0}
+      .fdh-suppr-alerte{background:#FBF1DF;border-radius:10px;padding:.5rem .65rem;
+        font-size:.78rem;color:#8a6a26;margin:.5rem 0}
       .fdh-main{flex:1;width:100%;max-width:480px;margin:0 auto;box-sizing:border-box;padding:1rem 1rem calc(72px + 1rem + env(safe-area-inset-bottom));overflow-y:auto}
       .fdh-main.avec-cta{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
       .fdh-cta-abo{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(52px + env(safe-area-inset-bottom));
