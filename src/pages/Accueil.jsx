@@ -779,12 +779,29 @@ function Rencontres({ moi }) {
     setFlash(aime ? "J'aime annulé" : `${profil.prenom} est de retour`)
   }
 
+  // La fenêtre de match est préparée AVANT les sorties anticipées, puis
+  // affichée dans les deux cas. Écrite seulement en bas du rendu normal, elle
+  // disparaissait quand le match tombait sur le DERNIER profil du paquet :
+  // agir() retire le profil 260 ms après le ❤, le composant sortait alors par
+  // `if (!p) return …` et la célébration s'effaçait en pleine apparition.
+  const fenetreMatch = match ? (
+    <div className="fdh-match"><div className="fdh-match-box">
+      <div className="fdh-match-emoji">🎉</div><h2>C'est un match !</h2>
+      <p>Toi et {match.prenom} vous êtes aimés.</p>
+      <button className="fdh-btn-rose" onClick={() => setMatch(null)}>Continuer</button>
+    </div></div>
+  ) : null
+
   if (err) return <div className="fdh-msg">{err}</div>
   if (profils === null) return <div className="fdh-msg">Chargement…</div>
   const p = profils[i]
-  if (!p) return <div className="fdh-vide-etat"><div className="fdh-vide-emoji">✨</div>
-    <p>Tu as vu tout le monde pour l'instant !</p>
-    <p className="fdh-vide-sous">Reviens plus tard, de nouveaux profils arrivent chaque jour.</p></div>
+  if (!p) return (
+    <div className="fdh-vide-etat"><div className="fdh-vide-emoji">✨</div>
+      <p>Tu as vu tout le monde pour l'instant !</p>
+      <p className="fdh-vide-sous">Reviens plus tard, de nouveaux profils arrivent chaque jour.</p>
+      {fenetreMatch}
+    </div>
+  )
 
   const age = ageDepuis(p.date_naissance)
   return (
@@ -823,13 +840,7 @@ function Rencontres({ moi }) {
       )}
       <p className="fdh-astuce-geste">Balaie pour voir plus tard · ❤ ou ✕ pour décider · {i + 1} / {profils.length}</p>
       <Flash texte={flash} onFin={() => setFlash('')} />
-      {match && (
-        <div className="fdh-match"><div className="fdh-match-box">
-          <div className="fdh-match-emoji">🎉</div><h2>C'est un match !</h2>
-          <p>Toi et {match.prenom} vous êtes aimés.</p>
-          <button className="fdh-btn-rose" onClick={() => setMatch(null)}>Continuer</button>
-        </div></div>
-      )}
+      {fenetreMatch}
     </div>
   )
 }
@@ -3337,7 +3348,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BV</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BW</div>
           </div>
         </div>
       )}
