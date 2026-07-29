@@ -1777,13 +1777,6 @@ function Visites({ moi, onVoir, onFaireAbo, onDiscuter }) {
 }
 
 /* ---------------- Abonnement VIP (modal, 3 formules) ---------------- */
-const MSG_ATTENTE = [
-  '📲 Une demande de paiement vient d\'être envoyée sur votre téléphone.',
-  '🔐 Composez votre code PIN Mobile Money pour valider.',
-  '⏳ Ne quittez pas cet écran, le paiement est en cours…',
-  '🔎 Vérification de la transaction en cours…',
-  '💜 Encore quelques instants, on y est presque…',
-]
 // Affichage du prix dans la devise du membre.
 // Le taux euro est FIXE (parité FCFA), les autres sont approximatifs : d'où le « ≈ ».
 const TAUX_FCFA = { XAF: 1, XOF: 1, EUR: 655.957, CHF: 700, USD: 600, CAD: 440, GBP: 780 }
@@ -1824,7 +1817,6 @@ function Abonnement({ moi, onFini, onClose }) {
   const [plan, setPlan] = useState(plansDispo.find(planDispo) || plansDispo[0])
   const [etape, setEtape] = useState('plans') // plans | methode | numero | attente | ok | echec
   const [msg, setMsg] = useState('')
-  const [idx, setIdx] = useState(0)
 
   // Le pays vient du PROFIL : le membre n'a plus à le choisir pendant le paiement.
   // C'est ce code pays qui part chez Chariow (phone.country_code) et qui détermine
@@ -1832,12 +1824,6 @@ function Abonnement({ moi, onFini, onClose }) {
   const paysProfil = (moi?.pays_residence || 'CM').toUpperCase()
   const [paysPaiement, setPaysPaiement] = useState(paysProfil)
   const indicatif = INDICATIFS.find(i => i.c === paysPaiement) || INDICATIFS[0]
-
-  useEffect(() => {
-    if (etape !== 'attente') return
-    const t = setInterval(() => setIdx(i => (i + 1) % MSG_ATTENTE.length), 3500)
-    return () => clearInterval(t)
-  }, [etape])
 
   // La fonction payer() qui appelait CamPay a été retirée le 26/07 :
   // CamPay n'accepte pas les sites de rencontres. Tout passe par Chariow.
@@ -1865,7 +1851,7 @@ function Abonnement({ moi, onFini, onClose }) {
     } catch (e) { setEtape('numero'); setMsg('Connexion impossible (teste sur le site en ligne).') }
   }
 
-  const enAttente = etape === 'attente' || etape === 'redir'
+  const enAttente = etape === 'redir'
 
   return (
     <div className="fdh-modal-fond" onClick={enAttente ? undefined : onClose}>
@@ -1885,16 +1871,6 @@ function Abonnement({ moi, onFini, onClose }) {
             <div className="fdh-spinner" />
             <h3 style={{ marginTop: '1rem' }}>Redirection vers le paiement sécurisé…</h3>
             <p className="fdh-attente-note">Merci de patienter quelques secondes, la page de paiement va s'ouvrir.</p>
-          </div>
-
-        ) : etape === 'attente' ? (
-          <div className="fdh-modal-attente">
-            <div className="fdh-attente-emoji">⏳</div>
-            <h3>Finalisation du paiement…</h3>
-            <div className="fdh-attente-alerte">⚠️ NE QUITTE PAS CET ÉCRAN jusqu'à la fin du paiement</div>
-            <p className="fdh-attente-note">🔔 Un message va apparaître sur ton téléphone. Compose ton code PIN. Cela peut prendre jusqu'à 30 secondes.</p>
-            <div className="fdh-spinner" />
-            <p className="fdh-attente-msg">{MSG_ATTENTE[idx]}</p>
           </div>
 
         ) : etape === 'echec' ? (
@@ -3348,7 +3324,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BX</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BY</div>
           </div>
         </div>
       )}
@@ -3696,10 +3672,6 @@ function Style() {
       .fdh-btn-rose:hover{background:#B21F4E}
       .fdh-btn-rose:disabled{opacity:.5}
       .fdh-btn-outline{background:#fff;color:#4A1546;border:1.5px solid #D62A5E;border-radius:12px;padding:.8rem 1.8rem;font-weight:800;cursor:pointer}
-      .fdh-btn-mtn{width:100%;margin-top:.8rem;background:#FFCC00;color:#1a1208;border:0;border-radius:12px;padding:1rem;font-size:1.05rem;font-weight:800;cursor:pointer}
-      .fdh-btn-mtn:hover{background:#f0be00}
-      .fdh-btn-orange{width:100%;margin-top:.6rem;background:#FF6A00;color:#fff;border:0;border-radius:12px;padding:1rem;font-size:1.05rem;font-weight:800;cursor:pointer}
-      .fdh-btn-orange:hover{background:#e85f00}
       .fdh-btn-texte{display:block;width:100%;margin-top:1rem;background:none;border:0;color:#7A6B74;font-weight:700;cursor:pointer;padding:.4rem}
       .fdh-signaler{display:block;width:100%;margin-top:1.5rem;background:#fff;border:1.5px solid #f0c9c9;color:#B21F4E;border-radius:12px;padding:.8rem;font-weight:800;font-size:.92rem;cursor:pointer}
       .fdh-signaler:hover{background:#fdeef2}
