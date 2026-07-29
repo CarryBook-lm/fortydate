@@ -334,8 +334,60 @@ function FicheProfil({ profil, moi, onFermer }) {
     L_SITUATION[profil.situation], L_ENFANTS[profil.enfants], profil.profession, L_TYPEREL[profil.type_relation],
   ].filter(Boolean)
 
-  // Signalement
-  const RAISONS = ['Comportement déplacé', 'Faux profil / arnaque', 'Photos choquantes', 'Propos irrespectueux', 'Autre']
+  // Signalement — PLUS AUCUNE zone de texte libre.
+  // Les membres s'en servaient comme d'une messagerie : ils ouvraient le profil
+  // de quelqu'un qui leur plaisait et écrivaient un message de drague. Ce n'est
+  // pas de la malveillance — une zone de saisie RESSEMBLE à une messagerie,
+  // quel que soit le titre au-dessus. Résultat : des signalements inexploitables
+  // et des membres persuadés d'avoir envoyé un message qui n'arrivera jamais.
+  // Deux rangées de phrases à cliquer : plus rien à écrire, donc plus rien à
+  // détourner, et les signalements arrivent classés donc enfin exploitables.
+  const RAISONS = [
+    'Faux profil ou arnaque',
+    'Photos choquantes',
+    'Propos irrespectueux',
+    'Comportement déplacé',
+    'Semble être un mineur',
+    'Autre',
+  ]
+
+  const PRECISIONS = {
+    'Faux profil ou arnaque': [
+      "Photos volées à quelqu'un d'autre",
+      "Me demande de l'argent",
+      "M'envoie vers un autre site ou WhatsApp",
+      'Se fait passer pour une autre personne',
+    ],
+    'Photos choquantes': [
+      'Photo à caractère sexuel',
+      'Photo violente ou choquante',
+      "Photo qui n'est pas de cette personne",
+    ],
+    'Propos irrespectueux': [
+      'Insultes',
+      'Propos à caractère sexuel non souhaités',
+      'Menaces',
+      'Propos haineux',
+    ],
+    'Comportement déplacé': [
+      'Insiste après un refus',
+      'Me harcèle de messages',
+      'Me demande des photos intimes',
+      "Veut me voir hors de l'application trop vite",
+    ],
+    // Catégorie indispensable sur une application de rencontres. Ses deux
+    // précisions distinguent une impression sur les photos d'une déclaration
+    // de la personne elle-même — la seconde est bien plus grave.
+    'Semble être un mineur': [
+      'Paraît avoir moins de 18 ans sur les photos',
+      'A dit être mineur',
+    ],
+    'Autre': [
+      'Compte en double',
+      'Profil inactif ou vide',
+      'Autre raison',
+    ],
+  }
   const [signalerOuvert, setSignalerOuvert] = useState(false)
   const [raison, setRaison] = useState('')
   const [detail, setDetail] = useState('')
@@ -451,15 +503,33 @@ function FicheProfil({ profil, moi, onFermer }) {
             ) : (
               <>
                 <h2 className="fdh-methode-titre">🚩 Signaler {profil.prenom}</h2>
+                {/* Cet encadré compte autant que la suppression du champ libre :
+                    il dit ce que le signalement est, ce qu'il n'est pas, et
+                    surtout QUOI FAIRE À LA PLACE. Sans cette dernière phrase, le
+                    membre reste avec son envie d'écrire et cherche un autre détour. */}
+                <p className="fdh-sig-note">
+                  Le signalement est lu par l'équipe FortyDate. Ce n'est pas un moyen
+                  d'écrire à {profil.prenom} — pour lui parler, aime son profil et
+                  attends qu'il ou elle t'aime en retour.
+                </p>
                 <p className="fdh-modal-sous">Pourquoi signales-tu ce profil ?</p>
                 <div className="fdh-echips">
                   {RAISONS.map(r => (
-                    <button key={r} type="button" className={'fdh-echip' + (raison === r ? ' on' : '')} onClick={() => setRaison(r)}>{r}</button>
+                    <button key={r} type="button" className={'fdh-echip' + (raison === r ? ' on' : '')}
+                      onClick={() => { setRaison(r); setDetail('') }}>{r}</button>
                   ))}
                 </div>
-                <label className="fdh-el">Détails (facultatif)</label>
-                <textarea className="fdh-ein fdh-etext" rows={3} maxLength={300} value={detail}
-                  placeholder="Décris ce qui s'est passé…" onChange={e => setDetail(e.target.value)} />
+                {raison && (
+                  <>
+                    <label className="fdh-el">Peux-tu préciser ? (facultatif)</label>
+                    <div className="fdh-echips">
+                      {(PRECISIONS[raison] || []).map(d => (
+                        <button key={d} type="button" className={'fdh-echip' + (detail === d ? ' on' : '')}
+                          onClick={() => setDetail(detail === d ? '' : d)}>{d}</button>
+                      ))}
+                    </div>
+                  </>
+                )}
                 {sigMsg && sigMsg !== 'ok' && <div className="fdh-abo-msg err">{sigMsg}</div>}
                 <button className="fdh-btn-rose" style={{ width: '100%', marginTop: '1rem' }} disabled={envoiSig} onClick={envoyerSignalement}>
                   {envoiSig ? 'Envoi…' : 'Envoyer le signalement'}
@@ -3142,7 +3212,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BQ</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BR</div>
           </div>
         </div>
       )}
@@ -3471,6 +3541,8 @@ function Style() {
       .fdh-ein:focus{outline:none;border-color:#D62A5E}
       .fdh-etext{resize:vertical;font-family:inherit}
       .fdh-eindic{flex:0 0 auto;width:auto;min-width:112px}
+      .fdh-sig-note{background:#FBF1DF;border-radius:10px;padding:.55rem .7rem;margin:.2rem 0 .8rem;
+        font-size:.76rem;line-height:1.35;color:#8a6a26}
       .fdh-echips{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.3rem}
       .fdh-echip{background:#fff;border:1.5px solid #E4D3D8;border-radius:999px;padding:.5rem .9rem;font-size:.9rem;color:#4A1546;cursor:pointer}
       .fdh-echip.on{background:#D62A5E;border-color:#D62A5E;color:#fff}
