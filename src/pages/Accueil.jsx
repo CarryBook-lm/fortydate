@@ -1667,6 +1667,11 @@ function Abonnement({ moi, onFini, onClose }) {
 
   async function payerChariow() {
     const num = String(tel).replace(/[^0-9]/g, '')
+    // On note la date d'expiration AVANT de partir payer. Au retour, la
+    // confirmation ne s'affichera que si elle a CHANGÉ. Sans ce repère, un
+    // membre déjà abonné qui annule sur la page de paiement verrait quand
+    // même « Félicitations » — un statut « actif » ne prouve rien chez lui.
+    try { localStorage.setItem('fd_abo_avant', String(moi?.abo_expire_at || '')) } catch (_) {}
     // Un numéro valide est indispensable : sans lui, l'API remplaçait par
     // 000000000 et la page Chariow redemandait pays + numéro au membre.
     if (num.length < 6) { setMsg('Entre ton numéro de téléphone pour continuer.'); setEtape('numero'); return }
@@ -1970,20 +1975,37 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
             <p className="fdh-vide-sous">Sois la première personne à dire ce que tu recherches.</p></div>
         : liste.map(a => {
             const p = a.p, moi_meme = a.auteur_id === moi.id
+            // Annonce de l'équipe : logo et nom de la marque, jamais le prénom
+            // ni la photo personnels de l'administratrice. Ni lien vers sa fiche,
+            // ni bouton « Discute avec moi » — ce compte n'est pas un membre.
+            const equipe = a.auteur_id === ID_ADMIN && !moi_meme
             return (
-              <div key={a.id} className={'fdh-annonce' + (moi_meme ? ' mienne' : '')}>
+              <div key={a.id} className={'fdh-annonce' + (moi_meme ? ' mienne' : '') + (equipe ? ' equipe' : '')}>
                 <div className="fdh-annonce-tete">
-                  <button className="fdh-annonce-av" onClick={() => onVoir(p.id)}>
-                    <Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" />
-                  </button>
+                  {equipe ? (
+                    <span className="fdh-annonce-av equipe"><img src={LOGO_EQUIPE} alt="" /></span>
+                  ) : (
+                    <button className="fdh-annonce-av" onClick={() => onVoir(p.id)}>
+                      <Avatar url={p.photo_principale} prenom={p.prenom} taille="100%" />
+                    </button>
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="fdh-annonce-nom">
-                      {moi_meme ? 'Ton annonce' : <>{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={18} /></>}
+                      {equipe
+                        ? <>FortyDate <span className="fdh-annonce-tag">équipe</span></>
+                        : moi_meme ? 'Ton annonce'
+                        : <>{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={18} /></>}
                     </div>
-                    <div className="fdh-annonce-lieu">
-                      📍 {p.ville ? p.ville + ' · ' : ''}{NOM_PAYS[p.pays_residence] || p.pays_residence}
-                    </div>
-                    <Presence p={p} avecTexte />
+                    {equipe ? (
+                      <div className="fdh-annonce-lieu">Message officiel</div>
+                    ) : (
+                      <>
+                        <div className="fdh-annonce-lieu">
+                          📍 {p.ville ? p.ville + ' · ' : ''}{NOM_PAYS[p.pays_residence] || p.pays_residence}
+                        </div>
+                        <Presence p={p} avecTexte />
+                      </>
+                    )}
                   </div>
                   {moi_meme && (
                     <>
@@ -1999,6 +2021,7 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
                 <p className="fdh-annonce-txt">{a.contenu}</p>
                 {moi_meme
                   ? <div className="fdh-annonce-vues">👁️ {a.vues || 0} vue{(a.vues || 0) > 1 ? 's' : ''}</div>
+                  : equipe ? null
                   : <button className="fdh-annonce-disc" onClick={() => onDiscuter(p)}>💬 Discute avec moi</button>}
               </div>
             )
@@ -3013,11 +3036,21 @@ export default function Accueil({ onDeconnexion }) {
     return () => clearInterval(t)
   }, []) // eslint-disable-line
 
-  // Dès que l'abonnement apparaît en base, on bascule sur les félicitations.
-  // On teste estAbonneP (les VRAIES colonnes) et non estAbonne, qui renvoie
-  // toujours vrai tant que l'accès est offert à tous.
+  // On ne confirme QUE si la date d'expiration a changé depuis le départ vers
+  // la page de paiement. Un simple « abo_statut = actif » ne prouve rien chez
+  // un membre qui renouvelle : c'était déjà vrai avant qu'il paie.
+  // On teste aussi estAbonneP (les VRAIES colonnes) et non estAbonne, qui
+  // renvoie toujours vrai tant que l'accès est offert à tous.
   useEffect(() => {
-    if (retourPaiement === 'attente' && estAbonneP(moi)) setRetourPaiement('ok')
+    if (retourPaiement !== 'attente') return
+    let avant = null
+    try { avant = localStorage.getItem('fd_abo_avant') } catch (_) {}
+    const maintenant = String(moi?.abo_expire_at || '')
+    const aChange = avant === null ? estAbonneP(moi) : maintenant !== String(avant || '')
+    if (aChange && estAbonneP(moi)) {
+      try { localStorage.removeItem('fd_abo_avant') } catch (_) {}
+      setRetourPaiement('ok')
+    }
   }, [moi?.abo_statut, moi?.abo_expire_at, retourPaiement]) // eslint-disable-line
 
   const titres = { proximite: 'Proximité', rencontres: 'Rencontre', jaime: "J'aime", messages: 'Messages', match: 'Affinités', visites: 'Visites' }
@@ -3087,7 +3120,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 27/07 · #BN</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BO</div>
           </div>
         </div>
       )}
@@ -3225,6 +3258,11 @@ function Style() {
       .fdh-annonce-av{flex:0 0 46px;width:46px;height:46px;border-radius:50%;overflow:hidden;border:0;padding:0;background:#EDE0E4;cursor:pointer;position:relative}
       .fdh-annonce-av .fdh-photo,.fdh-annonce-av .fdh-vide{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;font-size:1.1rem}
       .fdh-annonce-nom{font-weight:800;color:#3A0F38;font-size:.95rem}
+      .fdh-annonce.equipe{border:1.5px solid #C69A4E;background:#FFFDF8}
+      .fdh-annonce-av.equipe{display:grid;place-items:center;background:#4A1546;border-radius:50%;overflow:hidden}
+      .fdh-annonce-av.equipe img{width:100%;height:100%;object-fit:cover}
+      .fdh-annonce-tag{display:inline-block;margin-left:.35rem;background:#C69A4E;color:#fff;
+        border-radius:99px;padding:.05rem .45rem;font-size:.62rem;font-weight:800;vertical-align:middle}
       .fdh-annonce-lieu{font-size:.75rem;color:#7A6B74;margin:.1rem 0}
       .fdh-annonce-ic{background:none;border:0;font-size:1.05rem;cursor:pointer;padding:.1rem .2rem;line-height:1}
       .fdh-annonce-ic.moderer{background:#FDEAEA;border-radius:8px;padding:.25rem .35rem}
