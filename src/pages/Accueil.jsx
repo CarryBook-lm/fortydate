@@ -1851,6 +1851,10 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
   const [liste, setListe] = useState(null)
   const [err, setErr] = useState('')
   const [edition, setEdition] = useState(false)
+  // Quelle annonce on modifie. null = on en crée une nouvelle.
+  // Indispensable depuis que l'administration peut en avoir plusieurs :
+  // avant, le ✏️ modifiait toujours la PREMIÈRE, quel que soit le clic.
+  const [cible, setCible] = useState(null)
   const [texte, setTexte] = useState('')
   const [envoi, setEnvoi] = useState(false)
   const [flash, setFlash] = useState('')
@@ -1895,6 +1899,8 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
 
   function messageErreur(m) {
     const t = (m || '').toUpperCase()
+    if (t.includes('UNE_SEULE_ANNONCE'))
+      return "Tu as déjà une annonce en ligne. Modifie-la ou supprime-la avant d'en publier une autre."
     if (t.includes('NUMERO') || t.includes('EMAIL') || t.includes('LIEN'))
       return "Pour ta sécurité, les numéros de téléphone, e-mails et liens ne sont pas autorisés dans les annonces. Une fois que quelqu'un te plaît, tu pourras lui écrire en privé."
     return "Enregistrement impossible. Réessaie."
@@ -1905,14 +1911,14 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
     if (t.length < 20) { setErr("Écris au moins quelques phrases (20 caractères minimum)."); return }
     setEnvoi(true); setErr('')
     try {
-      if (mienne) {
-        const { error } = await supabase.from('annonces').update({ contenu: t }).eq('id', mienne.id)
+      if (cible) {
+        const { error } = await supabase.from('annonces').update({ contenu: t }).eq('id', cible.id)
         if (error) throw error
       } else {
         const { error } = await supabase.from('annonces').insert({ auteur_id: moi.id, contenu: t })
         if (error) throw error
       }
-      setEdition(false); setTexte(''); await charger()
+      setEdition(false); setCible(null); setTexte(''); await charger()
     } catch (e) { setErr(messageErreur(e.message)) } finally { setEnvoi(false) }
   }
 
@@ -1942,16 +1948,27 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
     <div>
       {!edition && (
         <div className="fdh-annonce-intro">
-          <p className="fdh-annonce-accroche">Publie une annonce et trouve ton âme sœur</p>
-          <button className="fdh-annonce-cta" onClick={() => { setTexte(mienne ? mienne.contenu : ''); setEdition(true); setErr('') }}>
-            {mienne ? '✏️ Modifier mon annonce' : '📢 Publier mon annonce'}
-          </button>
+          <p className="fdh-annonce-accroche">
+            {estAdmin ? "Publie un message officiel de l'équipe" : 'Publie une annonce et trouve ton âme sœur'}
+          </p>
+          {/* L'administration en publie autant qu'elle veut : son bouton crée
+              TOUJOURS une nouvelle annonce, et le ✏️ de chaque carte sert à
+              modifier celle-là précisément. Un membre garde son annonce unique. */}
+          {estAdmin ? (
+            <button className="fdh-annonce-cta" onClick={() => { setCible(null); setTexte(''); setEdition(true); setErr('') }}>
+              📢 Publier une nouvelle annonce
+            </button>
+          ) : (
+            <button className="fdh-annonce-cta" onClick={() => { setCible(mienne || null); setTexte(mienne ? mienne.contenu : ''); setEdition(true); setErr('') }}>
+              {mienne ? '✏️ Modifier mon annonce' : '📢 Publier mon annonce'}
+            </button>
+          )}
         </div>
       )}
 
       {edition && (
         <div className="fdh-panneau">
-          <label className="fdh-f-l">Ton annonce</label>
+          <label className="fdh-f-l">{cible ? 'Modifier' : (estAdmin ? 'Nouveau message officiel' : 'Ton annonce')}</label>
           <textarea className="fdh-f-in" rows={6} value={texte} maxLength={1000}
             placeholder="Ex. Veuve depuis 4 ans, je cherche un homme croyant, calme et attentionné, pour construire une vie à deux…"
             onChange={e => setTexte(e.target.value)} />
@@ -1960,7 +1977,7 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
           </p>
           {err && <div className="fdh-abo-msg err">{err}</div>}
           <div className="fdh-2btn" style={{ padding: '.8rem 0 0' }}>
-            <button className="b-profil" onClick={() => { setEdition(false); setErr('') }}>Annuler</button>
+            <button className="b-profil" onClick={() => { setEdition(false); setCible(null); setErr('') }}>Annuler</button>
             <button className="b-disc" disabled={envoi} onClick={publier}>{envoi ? '…' : 'Publier'}</button>
           </div>
         </div>
@@ -2014,7 +2031,7 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
                   </div>
                   {moi_meme && (
                     <>
-                      <button className="fdh-annonce-ic" onClick={() => { setTexte(a.contenu); setEdition(true) }} aria-label="Modifier">✏️</button>
+                      <button className="fdh-annonce-ic" onClick={() => { setCible(a); setTexte(a.contenu); setEdition(true); setErr('') }} aria-label="Modifier">✏️</button>
                       <button className="fdh-annonce-ic sup" onClick={() => supprimer(a)} aria-label="Supprimer">🗑️</button>
                     </>
                   )}
@@ -3125,7 +3142,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BP</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BQ</div>
           </div>
         </div>
       )}
