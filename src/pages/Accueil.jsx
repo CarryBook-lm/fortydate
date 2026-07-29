@@ -2153,6 +2153,27 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
   )
 }
 
+/* ---------------- Bande « ajoute ta photo » ---------------- */
+// Un écran qu'on n'ouvre jamais ne sert à rien : la pastille 📷 rend le geste
+// évident, mais encore faut-il que le membre revienne sur « Mon profil ».
+// Cette bande, elle, s'affiche là où les gens SONT déjà.
+//
+// Volontairement NON refermable : sans photo, un profil ne reçoit
+// pratiquement rien — c'est la seule chose utile à faire d'ici là.
+// Elle disparaît d'elle-même dès que la photo est en place.
+function BandePhoto({ onOuvrirProfil }) {
+  return (
+    <button className="fdh-bande-photo" onClick={onOuvrirProfil}>
+      <span className="fdh-bande-ic">📷</span>
+      <span className="fdh-bande-txt">
+        <b>Ajoute ta photo de profil</b>
+        <span>Sans photo, presque personne ne s'arrête sur ton profil. Trente secondes suffisent.</span>
+      </span>
+      <span className="fdh-bande-fl">›</span>
+    </button>
+  )
+}
+
 /* ---------------- Page S.Admin (réservée à l'admin) ---------------- */
 // [cle, emoji, libelle, champ renvoye par admin_actions, description]
 const ONGLETS_ACTION = [
@@ -3243,7 +3264,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BS</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BT</div>
           </div>
         </div>
       )}
@@ -3254,6 +3275,11 @@ export default function Accueil({ onDeconnexion }) {
           onFini={(r) => { setMesReponses(r); setOverlay(null); setOnglet('match') }} />}
         {overlay === 'annonces' && <Annonces moi={moi} estAdmin={estAdmin} onVoir={voirProfil} onDiscuter={(p) => { setOverlay(null); ouvrirDiscussion(p) }} />}
         {overlay === 'abonnement' && <Abonnement moi={moi} onFini={rechargerProfil} onClose={() => setOverlay(null)} />}
+        {/* Bande de rappel : uniquement sur les écrans principaux, jamais
+            par-dessus un overlay ni pendant une conversation ouverte. */}
+        {!overlay && moi && !moi.photo_principale
+          && ['proximite', 'rencontres', 'jaime', 'match'].includes(onglet)
+          && <BandePhoto onOuvrirProfil={() => ouvrirOverlay('profil')} />}
         {!overlay && onglet === 'proximite' && <Proximite moi={moi} onVoir={voirProfil} />}
         {!overlay && onglet === 'rencontres' && <Rencontres moi={moi} />}
         {!overlay && onglet === 'jaime' && <Jaime moi={moi} onVoir={voirProfil} onDiscuter={ouvrirDiscussion} onFaireAbo={() => ouvrirOverlay('abonnement')} />}
@@ -3344,6 +3370,16 @@ function Style() {
       #root{width:100%;max-width:480px;margin:0 auto}
       .fdh-app{min-height:100vh;background:#FBF4F5;font-family:system-ui,'Segoe UI',sans-serif;
         color:#3A0F38;display:flex;flex-direction:column;width:100%;max-width:480px;margin:0 auto;position:relative;overflow-x:clip}
+      .fdh-bande-photo{display:flex;align-items:center;gap:.7rem;width:100%;text-align:left;
+        background:linear-gradient(135deg,#4A1546,#D62A5E);color:#fff;border:0;border-radius:14px;
+        padding:.75rem .85rem;margin-bottom:.9rem;cursor:pointer;font-family:inherit;
+        box-shadow:0 3px 10px rgba(74,21,70,.22)}
+      .fdh-bande-photo:active{transform:scale(.99)}
+      .fdh-bande-ic{font-size:1.5rem;flex:0 0 auto}
+      .fdh-bande-txt{display:flex;flex-direction:column;gap:.12rem;min-width:0;flex:1}
+      .fdh-bande-txt b{font-size:.9rem}
+      .fdh-bande-txt span{font-size:.74rem;opacity:.9;line-height:1.3}
+      .fdh-bande-fl{font-size:1.5rem;flex:0 0 auto;opacity:.8}
       .fdh-main{flex:1;width:100%;max-width:480px;margin:0 auto;box-sizing:border-box;padding:1rem 1rem calc(72px + 1rem + env(safe-area-inset-bottom));overflow-y:auto}
       .fdh-main.avec-cta{padding-bottom:calc(140px + env(safe-area-inset-bottom))}
       .fdh-cta-abo{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(52px + env(safe-area-inset-bottom));
