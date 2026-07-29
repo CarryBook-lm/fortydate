@@ -18,6 +18,8 @@
 //      IvoireLove. Une vente qui ne concerne pas FortyDate doit repartir
 //      en 200 — sinon Chariow réessaierait en boucle et pour toujours
 //      sur une vente d'une autre application.
+import { envoyerMeta } from './_meta.js'
+
 const SR = process.env.SUPABASE_SERVICE_ROLE
 const SUPA = process.env.SUPABASE_URL
 
@@ -89,7 +91,7 @@ export default async function handler(req, res) {
     // contrôle, l'activation lèverait une violation de clé étrangère, on
     // répondrait 500, et Chariow réessaierait indéfiniment.
     const rp = await fetch(
-      `${SUPA}/rest/v1/profiles?id=eq.${encodeURIComponent(user_id)}&select=id`,
+      `${SUPA}/rest/v1/profiles?id=eq.${encodeURIComponent(user_id)}&select=id,telephone,pays_residence`,
       { headers: { apikey: SR, Authorization: 'Bearer ' + SR } }
     )
     const profils = rp.ok ? await rp.json().catch(() => []) : []
@@ -143,6 +145,33 @@ export default async function handler(req, res) {
     await journal({
       reference, statut: 'CHARIOW_OK', user_id, montant, jours, ok: true, brut: body
     })
+
+    // ---- Conversion Meta -------------------------------------------------
+    // Sans cet envoi, les campagnes optimisent vers l'INSCRIPTION et non vers
+    // l'achat : elles cherchent des gens qui s'inscrivent, pas qui paient.
+    // C'est le seul endroit possible — après la redirection, le navigateur ne
+    // connaît pas l'identifiant de la vente, et le membre ne revient pas
+    // toujours (application fermée juste après le paiement).
+    // Enfermé dans un try : un souci chez Meta ne doit JAMAIS empêcher
+    // l'activation d'un abonnement déjà payé.
+    try {
+      const p = profils[0] || {}
+      await envoyerMeta({
+        nom: 'Subscribe',
+        eventId: 'sub_' + reference,   // identifiant stable : Meta dédoublonne
+        userId: user_id,
+        email: pick(sale, 'customer.email', 'email', 'buyer.email') || null,
+        telephone: p.telephone || null,
+        pays: p.pays_residence || null,
+        valeur: montant,
+        devise,
+        url: 'https://fortydate.com/',
+        extra: { jours }
+      })
+    } catch (e) {
+      console.error('Subscribe Meta', String(e && e.message ? e.message : e))
+    }
+
     return res.status(200).json({ ok: true, active: true })
 
   } catch (e) {
