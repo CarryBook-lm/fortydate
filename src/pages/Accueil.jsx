@@ -2371,8 +2371,12 @@ function Admin({ onVoir }) {
     ;(async () => {
       setAVerifier(null)
       const { data } = await supabase.from('profiles')
-        .select('id, prenom, date_naissance, photo_principale, selfie_url, verifie, pays_residence')
-        .not('selfie_url', 'is', null).eq('verifie', false).limit(50)
+        .select('id, prenom, date_naissance, photo_principale, selfie_url, selfie_at, verifie, pays_residence')
+        .not('selfie_url', 'is', null).eq('verifie', false)
+        // Du selfie le plus récent au plus ancien. nullsFirst: false met en BAS
+        // les rares profils sans date, plutôt qu'en tête de file.
+        .order('selfie_at', { ascending: false, nullsFirst: false })
+        .limit(50)
       // Lien temporaire (1 h) pour lire le selfie du bucket privé.
       // Les anciens enregistrements contiennent une URL publique : on la garde telle quelle.
       const avec = await Promise.all((data || []).map(async v => {
@@ -2635,6 +2639,7 @@ function Admin({ onVoir }) {
                     {v.prenom}{ageDepuis(v.date_naissance) ? `, ${ageDepuis(v.date_naissance)}` : ''}
                     {!v.photo_principale && <span className="fdh-adm-alerte"> · 📷 aucune photo de profil</span>}
                   </div>
+                  {v.selfie_at && <div className="fdh-adm-sous">Demande {ilYA(v.selfie_at)}</div>}
                   <div style={{ display: 'flex', gap: '.4rem' }}>
                     <button className={'fdh-adm-btn' + (ecritsA[v.id] ? ' ecrit' : '')}
                       title={ecritsA[v.id] ? 'Déjà écrit ' + ilYA(ecritsA[v.id]) : 'Écrire à ' + v.prenom}
@@ -2878,7 +2883,10 @@ function Verification({ moi, onClose }) {
     setEnvoi(true); setErr('')
     try {
       const chemin = await envoyerSelfieVerif(file, moi.id)
-      const { error } = await supabase.from('profiles').update({ selfie_url: chemin }).eq('id', moi.id)
+      // selfie_at horodate la DEMANDE : c'est lui qui ordonne la file de
+      // vérification. Sans cette ligne, la file redeviendrait un tas.
+      const { error } = await supabase.from('profiles')
+        .update({ selfie_url: chemin, selfie_at: new Date().toISOString() }).eq('id', moi.id)
       if (error) throw error
       setEtat('attente')
     } catch (e) {
@@ -3264,7 +3272,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BT</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BU</div>
           </div>
         </div>
       )}

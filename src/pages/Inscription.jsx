@@ -190,7 +190,10 @@ export default function Inscription({ onComplete }) {
       // Avant : uploadPhotoOptimisee(file, user.id + '-verif') écrivait dans le
       // bucket PUBLIC avatars, dans un dossier qui ne correspondait pas à auth.uid().
       const chemin = await envoyerSelfieVerif(file, user.id)
-      const { error } = await supabase.from('profiles').update({ selfie_url: chemin }).eq('id', user.id)
+      // selfie_at horodate la demande — même règle que depuis le menu ☰.
+      // Une fonction en deux copies, c'est une migration qui n'en corrige qu'une.
+      const { error } = await supabase.from('profiles')
+        .update({ selfie_url: chemin, selfie_at: new Date().toISOString() }).eq('id', user.id)
       if (error) throw error
       set('selfie_envoye', true)
     } catch (e) {
