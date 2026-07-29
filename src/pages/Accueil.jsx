@@ -1978,7 +1978,10 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
             // Annonce de l'équipe : logo et nom de la marque, jamais le prénom
             // ni la photo personnels de l'administratrice. Ni lien vers sa fiche,
             // ni bouton « Discute avec moi » — ce compte n'est pas un membre.
-            const equipe = a.auteur_id === ID_ADMIN && !moi_meme
+            // Vrai AUSSI pour l'administratrice sur sa propre annonce : elle doit
+            // voir exactement ce que voient les membres. Ses boutons ✏️ 🗑️ et son
+            // compteur de vues restent en place, eux dépendent de moi_meme.
+            const equipe = a.auteur_id === ID_ADMIN
             return (
               <div key={a.id} className={'fdh-annonce' + (moi_meme ? ' mienne' : '') + (equipe ? ' equipe' : '')}>
                 <div className="fdh-annonce-tete">
@@ -1997,7 +2000,9 @@ function Annonces({ moi, onVoir, onDiscuter, estAdmin = false }) {
                         : <>{p.prenom}{ageDepuis(p.date_naissance) ? `, ${ageDepuis(p.date_naissance)}` : ''}<Badge p={p} size={18} /></>}
                     </div>
                     {equipe ? (
-                      <div className="fdh-annonce-lieu">Message officiel</div>
+                      <div className="fdh-annonce-lieu">
+                        Message officiel{moi_meme ? ' · ton annonce' : ''}
+                      </div>
                     ) : (
                       <>
                         <div className="fdh-annonce-lieu">
@@ -3120,7 +3125,7 @@ export default function Accueil({ onDeconnexion }) {
               alert(res.ok ? 'Notifications activees !' : 'Echec : ' + res.reason)
             }}>🔔 Activer les notifications</button>
             <button className="fdh-drawer-item deco" onClick={onDeconnexion}>🚪 Se déconnecter</button>
-            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BO</div>
+            <div style={{ fontSize: '.72rem', color: '#b7a7ae', textAlign: 'center', marginTop: '.8rem' }}>FortyDate · version 29/07 · #BP</div>
           </div>
         </div>
       )}
